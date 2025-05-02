@@ -5,7 +5,7 @@ import {
 } from '@grammyjs/conversations';
 import dotenv from 'dotenv';
 import { Bot, session } from 'grammy';
-import { studentController } from './conversations/students/create.js';
+import { studentCrudConversation } from './conversations/students/create';
 import { StudentRepo } from './model/Student.js';
 import { getSheetDBClient } from './sheetdb/sheetdb.js';
 import type { BaseContext, MyContext, MySession } from './types.js';
@@ -46,7 +46,7 @@ async function orderConversation(
 // register it
 bot.use(createConversation(orderConversation));
 
-const studentCreationConversation = studentController(studentRepo)
+const studentCreationConversation = studentCrudConversation(studentRepo)
 
 // Register it with a name
 bot.use(createConversation(studentCreationConversation, 'createStudentConversation'));

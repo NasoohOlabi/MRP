@@ -25,7 +25,7 @@ export class StudentRepo extends BaseRepo<Student>{
 				...params,
 				created_at: new Date().toISOString(),
 				updated_at: new Date().toISOString(),
-				id: Date.now(),
+				id: Date.now() - 1746189638398,
 			}, this.sheet!) as SheetDBResponse;
 		}
 		return await this._create({ ...params }) as SheetDBResponse;

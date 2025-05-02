@@ -21,7 +21,7 @@ type ButtonStep = BaseStep & {
 		url?: string;
 		next: Step | null;
 	}[];
-	onSelect?: (data: string, ctx: MyContext) => Promise<void>;
+	onSelect?: (data: string, ctx: MyContext, btnResponse: MyContext) => Promise<void>;
 };
 
 type Step = TextStep | ButtonStep;
@@ -66,16 +66,17 @@ export function createTreeConversation<T>({
 					}
 
 					await ctx.reply(step.prompt, { reply_markup: keyboard });
-					const res = await conv.wait();
-					const data = res.callbackQuery?.data;
+					const btnResponse = await conv.wait();
+					const data = btnResponse.callbackQuery?.data;
 
 					if (!data) {
-						await res.reply("Please select an option.");
+						await btnResponse.reply("Please select an option.");
 						return;
 					}
 
-					await res.answerCallbackQuery({ text: `You selected ${data}` });
-					if (step.onSelect) await step.onSelect(data, ctx);
+					await btnResponse.answerCallbackQuery({ text: `You selected ${data}` });
+
+					if (step.onSelect) await step.onSelect(data, ctx, btnResponse);
 
 					results[step.prompt] = data;
 
