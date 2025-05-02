@@ -1,4 +1,4 @@
-import type { SheetDBClient, SheetDBConfig, SheetDBResponse } from "../sheetdb/sheetdb";
+import type { SheetDBClient, SheetDBResponse } from "../sheetdb/sheetdb";
 import { BaseRepo } from "./BaseRepo";
 
 export class Student {
@@ -25,7 +25,7 @@ export class StudentRepo extends BaseRepo<Student>{
 				...params,
 				created_at: new Date().toISOString(),
 				updated_at: new Date().toISOString(),
-				id: 0
+				id: Date.now(),
 			}, this.sheet!) as SheetDBResponse;
 		}
 		return await this._create({ ...params }) as SheetDBResponse;
