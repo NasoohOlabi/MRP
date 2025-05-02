@@ -1,5 +1,16 @@
-// load .env file
+import type {
+	ConversationFlavor,
+} from '@grammyjs/conversations';
+import {
+	Conversation,
+	conversations,
+	createConversation,
+} from '@grammyjs/conversations';
 import dotenv from 'dotenv';
+import type { SessionFlavor } from 'grammy';
+import { Bot, Context, session } from 'grammy';
+import { createStudentConversationFactory } from './conversations/students/create.js';
+import { StudentRepo } from './model/Student.js';
 import { getSheetDBClient } from './sheetdb/sheetdb.js';
 
 const env = dotenv.config().parsed! as {
@@ -16,18 +27,8 @@ const sheetdb = getSheetDBClient({
 	version: '1',
 	token: env.SHEET_DB_TOKEN
 });
+const studentRepo = new StudentRepo(sheetdb);
 
-
-import type {
-	ConversationFlavor,
-} from '@grammyjs/conversations';
-import {
-	Conversation,
-	conversations,
-	createConversation,
-} from '@grammyjs/conversations';
-import type { SessionFlavor } from 'grammy';
-import { Bot, Context, session } from 'grammy';
 
 type MySession = { state?: string };
 
@@ -56,6 +57,11 @@ async function orderConversation(
 // register it
 bot.use(createConversation(orderConversation));
 
+// Create and register the student creation conversation using the factory
+const studentCreationConversation = createStudentConversationFactory(studentRepo);
+// Register it with a name
+bot.use(createConversation(studentCreationConversation, 'createStudentConversation'));
+
 // --- commands & handlers ---
 bot.command('start', async (ctx) => {
 	await ctx.reply('Welcome! Order or Support?');
@@ -67,6 +73,9 @@ bot.on('message:text', async (ctx) => {
 		if (ctx.message.text === 'Order') {
 			// conversation.enter is now typed properly
 			await ctx.conversation.enter('orderConversation');
+		} else if (ctx.message.text === 'Student') {
+			// conversation.enter is now typed properly
+			await ctx.conversation.enter('createStudentConversation');
 		} else if (ctx.message.text === 'Support') {
 			await ctx.reply('Support flow coming soon.');
 		} else {
