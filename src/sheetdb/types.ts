@@ -5,8 +5,7 @@
 export interface SheetDBConfig {
 	address: string;
 	version?: string;
-	auth_login?: string;
-	auth_password?: string;
+	token: string;
 }
 
 export interface SearchParams {

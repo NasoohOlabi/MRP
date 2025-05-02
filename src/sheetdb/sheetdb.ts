@@ -10,19 +10,18 @@ import { isURL } from './lib/isURL.js';
 import { read } from './lib/read.js';
 import { update } from './lib/update.js';
 import { validAddress } from './lib/validAddress.js';
-import type { SheetDBConfig } from './types';
+import type { SheetDBConfig } from './types.js';
 
 /**
  * SheetDB client for interacting with SheetDB API
  * @param config Configuration for SheetDB
  * @returns SheetDB client instance
  */
-export function sheetdbClient(config?: SheetDBConfig) {
+export function getSheetDBClient(config?: SheetDBConfig) {
 	const configParam = config || {} as SheetDBConfig;
 
 	configParam.version = configParam.version || '1';
-	configParam.auth_login = configParam.auth_login || '';
-	configParam.auth_password = configParam.auth_password || '';
+	configParam.token = configParam.token || '';
 
 	if (!configParam.address) {
 		throw Error('address param needed');
@@ -48,8 +47,8 @@ export function sheetdbClient(config?: SheetDBConfig) {
 	};
 }
 
-export default sheetdbClient;
+export default getSheetDBClient;
 
 // Export types
-export * from './types';
+export * from './types.js';
 

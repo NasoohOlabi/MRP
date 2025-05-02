@@ -1,15 +1,20 @@
-console.log("Hello via Bun!");
+// load .env file
+import dotenv from 'dotenv';
+import { getSheetDBClient } from './sheetdb/sheetdb.js';
 
-// Import the modernized SheetDB client
-import { sheetdbClient } from './src/sheetdb/index.js';
+const env = dotenv.config().parsed! as {
+	BOT_TOKEN: string,
+	GOOGLE_SHEET_ID: string,
+	LOG_LEVEL: string,
+	SHEET_DB: string,
+	SHEET_DB_TOKEN: string,
+};
 
 // Example of using the modernized SheetDB client
-const sheetdb = sheetdbClient({
-	address: 'a3knoedogbebf', // Your SheetDB ID
+const sheetdb = getSheetDBClient({
+	address: env.SHEET_DB,
 	version: '1',
-	// Optional authentication
-	// auth_login: 'your-login',
-	// auth_password: 'your-password'
+	token: env.SHEET_DB_TOKEN
 });
 
 // Example: Read data from SheetDB

@@ -18,9 +18,8 @@ export function create(this: { config: SheetDBConfig }, newRow: RowData, sheet?:
 		};
 
 		// Add authorization header if credentials are provided
-		if (config.auth_login && config.auth_password) {
-			const auth = btoa(`${config.auth_login}:${config.auth_password}`);
-			headers['Authorization'] = `Basic ${auth}`;
+		if (config.token) {
+			headers['Authorization'] = `Bearer ${config.token}`;
 		}
 
 		// Use fetch API instead of XMLHttpRequest

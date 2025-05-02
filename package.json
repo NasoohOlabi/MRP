@@ -2,6 +2,9 @@
   "name": "mrp",
   "module": "index.ts",
   "type": "module",
+  "scripts": {
+    "run": "bun run ./src/index.ts"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },
@@ -11,6 +14,6 @@
   "dependencies": {
     "dotenv": "^16.5.0",
     "google-spreadsheet": "^4.1.4",
-    "sheetdb-node": "^0.0.12"
+    "mrp": "file:"
   }
 }
