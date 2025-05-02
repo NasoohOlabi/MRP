@@ -4,11 +4,10 @@
 import type { SheetDBConfig } from '../types';
 
 export function endpoint(
-	this: { config: SheetDBConfig },
+	config: SheetDBConfig,
 	endpoint: string,
 	sheet?: string
 ): Promise<any> {
-	const config = this.config;
 
 	return new Promise((resolve, reject) => {
 		const sheetParam = !sheet ? '' : `?sheet=${sheet}`;

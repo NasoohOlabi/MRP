@@ -20,7 +20,9 @@ const sheetdb = getSheetDBClient({
 // Example: Read data from SheetDB
 async function fetchData() {
 	try {
-		const data = await sheetdb.read();
+		const data = await sheetdb.read({
+			sheet: 'tickets',
+		});
 		console.log('Data from SheetDB:', data);
 	} catch (error) {
 		console.error('Error fetching data:', error);
@@ -28,5 +30,5 @@ async function fetchData() {
 }
 
 // Uncomment to run the example
-// fetchData();
+fetchData();
 

@@ -4,12 +4,11 @@
 import type { SheetDBConfig } from '../types';
 
 export function deleteRow(
-	this: { config: SheetDBConfig },
+	config: SheetDBConfig,
 	columnName: string,
 	value: string | number,
 	sheet?: string
 ): Promise<any> {
-	const config = this.config;
 
 	return new Promise((resolve, reject) => {
 		if (!columnName) {

@@ -4,8 +4,7 @@
 import type { RowData, SheetDBConfig } from '../types';
 
 // Use Bun's built-in fetch API instead of XMLHttpRequest
-export function create(this: { config: SheetDBConfig }, newRow: RowData, sheet?: string): Promise<any> {
-	const config = this.config;
+export function create(config: SheetDBConfig, newRow: RowData, sheet?: string): Promise<any> {
 
 	return new Promise((resolve, reject) => {
 		const sheetParam = !sheet ? '' : `?sheet=${sheet}`;

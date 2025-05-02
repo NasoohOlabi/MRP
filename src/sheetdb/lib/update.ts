@@ -4,13 +4,12 @@
 import type { RowData, SheetDBConfig } from '../types';
 
 export function update(
-	this: { config: SheetDBConfig },
+	config: SheetDBConfig,
 	columnName: string,
 	value: string | number,
 	newRow: RowData,
 	sheet?: string
 ): Promise<any> {
-	const config = this.config;
 
 	return new Promise((resolve, reject) => {
 		if (!columnName) {

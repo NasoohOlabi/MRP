@@ -3,8 +3,7 @@
  */
 import type { ReadParams, SheetDBConfig } from '../types';
 
-export function read(this: { config: SheetDBConfig }, params?: ReadParams): Promise<any> {
-	const config = this.config;
+export function read(config: SheetDBConfig, params?: ReadParams): Promise<any> {
 	const requestParams = params || {};
 
 	return new Promise((resolve, reject) => {
