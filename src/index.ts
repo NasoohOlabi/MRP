@@ -1,17 +1,14 @@
-import type {
-	ConversationFlavor,
-} from '@grammyjs/conversations';
 import {
 	Conversation,
 	conversations,
 	createConversation,
 } from '@grammyjs/conversations';
 import dotenv from 'dotenv';
-import type { SessionFlavor } from 'grammy';
-import { Bot, Context, session } from 'grammy';
-import { createStudentConversationFactory } from './conversations/students/create.js';
+import { Bot, session } from 'grammy';
+import { studentController } from './conversations/students/create.js';
 import { StudentRepo } from './model/Student.js';
 import { getSheetDBClient } from './sheetdb/sheetdb.js';
+import type { BaseContext, MyContext, MySession } from './types.js';
 
 const env = dotenv.config().parsed! as {
 	BOT_TOKEN: string,
@@ -29,14 +26,6 @@ const sheetdb = getSheetDBClient({
 });
 const studentRepo = new StudentRepo(sheetdb);
 
-
-type MySession = { state?: string };
-
-// 1) BaseContext knows about `session` but not yet conversations
-type BaseContext = Context & SessionFlavor<MySession>;
-
-// 2) MyContext adds the conversation flavor *on top* of BaseContext
-type MyContext = BaseContext & ConversationFlavor<BaseContext>;
 
 const bot = new Bot<MyContext>(process.env.BOT_TOKEN!);
 
@@ -57,8 +46,8 @@ async function orderConversation(
 // register it
 bot.use(createConversation(orderConversation));
 
-// Create and register the student creation conversation using the factory
-const studentCreationConversation = createStudentConversationFactory(studentRepo);
+const studentCreationConversation = studentController(studentRepo)
+
 // Register it with a name
 bot.use(createConversation(studentCreationConversation, 'createStudentConversation'));
 

@@ -1,0 +1,100 @@
+import type { Conversation } from '@grammyjs/conversations';
+import { InlineKeyboard } from 'grammy';
+import type { BaseContext, MyContext } from '../types';
+
+type BaseStep = {
+	prompt: string;
+};
+
+type TextStep = BaseStep & {
+	type: 'text';
+	validate: (text: string | undefined) => boolean;
+	error: string;
+	next: (value: string) => Step | null;
+};
+
+type ButtonStep = BaseStep & {
+	type: 'button';
+	options: {
+		text: string;
+		data: string;
+		url?: string;
+		next: Step | null;
+	}[];
+	onSelect?: (data: string, ctx: MyContext) => Promise<void>;
+};
+
+type Step = TextStep | ButtonStep;
+
+type TreeConversationOptions<T> = {
+	entry: Step;
+	onSuccess: (results: Record<string, string>) => Promise<T>;
+	successMessage: string;
+	failureMessage: string;
+};
+
+export function createTreeConversation<T>({
+	entry,
+	onSuccess,
+	successMessage,
+	failureMessage,
+}: TreeConversationOptions<T>) {
+	return async (conv: Conversation<BaseContext, MyContext>, ctx: MyContext) => {
+		const results: Record<string, string> = {};
+		try {
+			let step: Step | null = entry;
+
+			while (step) {
+				if (step.type === 'text') {
+					await ctx.reply(step.prompt);
+					const res = await conv.wait();
+					const text = res.message?.text;
+					if (!step.validate(text)) {
+						await ctx.reply(step.error);
+						return;
+					}
+
+					const value = text!.trim();
+					results[step.prompt] = value;
+					step = step.next(value);
+				} else if (step.type === 'button') {
+					const keyboard = new InlineKeyboard();
+					for (const opt of step.options) {
+						opt.url
+							? keyboard.url(opt.text, opt.url)
+							: keyboard.text(opt.text, opt.data);
+					}
+
+					await ctx.reply(step.prompt, { reply_markup: keyboard });
+					const res = await conv.wait();
+					const data = res.callbackQuery?.data;
+
+					if (!data) {
+						await res.reply("Please select an option.");
+						return;
+					}
+
+					await res.answerCallbackQuery({ text: `You selected ${data}` });
+					if (step.onSelect) await step.onSelect(data, ctx);
+
+					results[step.prompt] = data;
+
+					const selected: {
+						text: string;
+						data: string;
+						url?: string | undefined;
+						next: Step | null;
+					} = step.options.find((o) => o.data === data)!;
+					step = selected?.next ?? null;
+				}
+			}
+
+			await ctx.reply("Processing...");
+			await conv.external(() => onSuccess(results));
+			await ctx.reply(successMessage);
+		} catch (err) {
+			console.error("Tree conversation error:", err);
+			await ctx.reply(failureMessage);
+		}
+	};
+}
