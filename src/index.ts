@@ -1,6 +1,7 @@
 // load .env file
 import dotenv from 'dotenv';
 import { getSheetDBClient } from './sheetdb/sheetdb.js';
+import { StudentRepo } from './model/Student.js';
 
 const env = dotenv.config().parsed! as {
 	BOT_TOKEN: string,
@@ -17,18 +18,11 @@ const sheetdb = getSheetDBClient({
 	token: env.SHEET_DB_TOKEN
 });
 
-// Example: Read data from SheetDB
-async function fetchData() {
-	try {
-		const data = await sheetdb.read({
-			sheet: 'tickets',
-		});
-		console.log('Data from SheetDB:', data);
-	} catch (error) {
-		console.error('Error fetching data:', error);
-	}
-}
 
-// Uncomment to run the example
-fetchData();
+const studentsRepo = new StudentRepo(sheetdb)
 
+const s = await studentsRepo.read()
+
+console.log(s)
+
+console.log(s[0].birth_date)
