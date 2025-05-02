@@ -1,43 +1,3 @@
-// import Fuse from "fuse.js";
-
-// const f = new Fuse([
-// 	{
-// 		id: "0",
-// 		first_name: "mike",
-// 		last_name: "bens",
-// 		group: "gg",
-// 		birth_date: "2001-05-30",
-// 		created_at: "2025-05-02T07:58:22.380Z",
-// 		updated_at: "2025-05-02T07:58:22.381Z",
-// 	}, {
-// 		id: "0",
-// 		first_name: "mike 2",
-// 		last_name: "benz",
-// 		group: "gg",
-// 		birth_date: "2000-52-55",
-// 		created_at: "2025-05-02T08:00:20.937Z",
-// 		updated_at: "2025-05-02T08:00:20.937Z",
-// 	}, {
-// 		id: "1746189638398",
-// 		first_name: "John",
-// 		last_name: "Doe",
-// 		group: "gg",
-// 		birth_date: "2003-03-10",
-// 		created_at: "2025-05-02T12:40:38.398Z",
-// 		updated_at: "2025-05-02T12:40:38.398Z",
-// 	}, {
-// 		id: "4452722",
-// 		first_name: "m",
-// 		last_name: "n",
-// 		group: "gg",
-// 		birth_date: "2000-10-10",
-// 		created_at: "2025-05-02T13:54:51.120Z",
-// 		updated_at: "2025-05-02T13:54:51.120Z",
-// 	}
-// ], { keys: ['first_name', 'last_name', 'group'] })
-
-// console.log(f.search('doe'))
-
 import {
 	Conversation,
 	conversations,
@@ -45,7 +5,7 @@ import {
 } from '@grammyjs/conversations';
 import dotenv from 'dotenv';
 import { Bot, session } from 'grammy';
-import { studentCrudConversation } from './conversations/students/create';
+import { studentCrudConversation } from './conversations/students/studentCrud.js';
 import { StudentRepo } from './model/Student.js';
 import { getSheetDBClient } from './sheetdb/sheetdb.js';
 import type { BaseContext, MyContext, MySession } from './types.js';

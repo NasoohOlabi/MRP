@@ -1,6 +1,6 @@
 import { StudentRepo } from '../../model/Student';
 import type { Step, TextStep } from '../../types';
-import { createTreeConversation } from '../base';
+import { createTreeConversation } from '../baseConversation';
 
 export const studentCrudConversation = (repo: StudentRepo) => createTreeConversation({
 	entry: {
