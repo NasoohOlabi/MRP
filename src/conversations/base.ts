@@ -1,37 +1,7 @@
 import type { Conversation } from '@grammyjs/conversations';
 import { InlineKeyboard } from 'grammy';
-import type { BaseContext, MyContext } from '../types';
+import type { BaseContext, MyContext, Step, TreeConversationOptions } from '../types';
 
-type BaseStep = {
-	prompt: string;
-};
-
-type TextStep = BaseStep & {
-	type: 'text';
-	validate: (text: string | undefined) => boolean;
-	error: string;
-	next: (value: string) => Step | null;
-};
-
-type ButtonStep = BaseStep & {
-	type: 'button';
-	options: {
-		text: string;
-		data: string;
-		url?: string;
-		next: Step | null;
-	}[];
-	onSelect?: (data: string, ctx: MyContext, btnResponse: MyContext) => Promise<void>;
-};
-
-type Step = TextStep | ButtonStep;
-
-type TreeConversationOptions<T> = {
-	entry: Step;
-	onSuccess: (results: Record<string, string>) => Promise<T>;
-	successMessage: string;
-	failureMessage: string;
-};
 
 export function createTreeConversation<T>({
 	entry,
@@ -56,7 +26,7 @@ export function createTreeConversation<T>({
 
 					const value = text!.trim();
 					results[step.prompt] = value;
-					step = step.next(value);
+					step = await step.next(value);
 				} else if (step.type === 'button') {
 					const keyboard = new InlineKeyboard();
 					for (const opt of step.options) {
@@ -95,6 +65,8 @@ export function createTreeConversation<T>({
 			await ctx.reply(successMessage);
 		} catch (err) {
 			console.error("Tree conversation error:", err);
+			console.log((err as Error).message)
+			console.log((err as Error).stack)
 			await ctx.reply(failureMessage);
 		}
 	};

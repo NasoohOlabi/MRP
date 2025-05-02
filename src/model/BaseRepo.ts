@@ -3,7 +3,7 @@ import type { ReadParams, RowData, SheetDBClient } from "../sheetdb/sheetdb";
 export abstract class BaseRepo<T>  {
 
 	protected constructor(
-		protected db: SheetDBClient,
+		private db: SheetDBClient,
 		protected sheet: string | null = null,
 		protected track_dates = false
 	) {
@@ -17,6 +17,8 @@ export abstract class BaseRepo<T>  {
 		if (this.track_dates) {
 			params.created_at = new Date().toISOString();
 			params.updated_at = new Date().toISOString();
+			params.id = Date.now() - 1746189638398;
+
 		}
 		return await this.db.create(params, this.sheet!) as T[];
 	}
