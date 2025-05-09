@@ -35,4 +35,7 @@ export class StudentRepo extends BaseRepo<Student>{
 		const results = new Fuse(students, { keys: ['first_name', 'last_name', 'group'] }).search(response)
 		return results
 	}
+	public async delete(student: Student) {
+		return await this._delete('id', student.id)
+	}
 }
