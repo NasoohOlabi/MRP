@@ -1,15 +1,16 @@
-import { StudentRepo } from '../../model/Student';
+import { TeacherRepo } from '../../model/Teacher';
+import type { ButtonStep } from '../../types';
 import { createTreeConversation } from '../baseConversation';
 import { createStep } from './flows/create';
 import { deleteStep } from './flows/delete';
 import { updateStep } from './flows/update';
 
-export const studentCrudConversation = (repo: StudentRepo) => createTreeConversation({
+export const teacherCrudConversation = (repo: TeacherRepo) => createTreeConversation<string | null>({
 	entry: {
 		type: 'button',
 		prompt: "What operation would you like to perform?",
 		options: [
-			createStep,
+			createStep(repo),
 			updateStep(repo),
 			deleteStep(repo),
 			{
@@ -26,26 +27,24 @@ export const studentCrudConversation = (repo: StudentRepo) => createTreeConversa
 				await res.editMessageText(`You selected ${data.toUpperCase()}`);
 			}
 		},
-	},
+	} as ButtonStep,
 	onSuccess: async (results) => {
 		const op = results["What operation would you like to perform?"];
 		if (op === "create") {
-			return repo.create({
+			const newTeacherData = {
 				first_name: results["Enter first name:"],
 				last_name: results["Enter last name:"],
-				birth_date: results["Enter birth date (YYYY-MM-DD):"],
+				phone_number: results["Enter phone number:"],
 				group: results["Enter group:"],
-			});
+			};
+			const response = await repo.create(newTeacherData);
+			return JSON.stringify(response);
 		} else if (op === "delete") {
-			// return repo.delete(results["Enter student ID to delete:"]);
 			return JSON.stringify(op);
 		} else {
-			// log the results to the logs folder
-
+			return null;
 		}
 	},
 	successMessage: "Operation completed successfully.",
 	failureMessage: "Something went wrong during the operation.",
 });
-
-
