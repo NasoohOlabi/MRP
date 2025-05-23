@@ -1,4 +1,4 @@
-import type { ReadParams, RowData, SheetDBClient } from "../sheetdb/sheetdb";
+import type { ReadParams, RowData, SheetDBClient, SheetDBResponse } from "../sheetdb/sheetdb";
 
 export abstract class BaseRepo<T>  {
 
@@ -10,7 +10,13 @@ export abstract class BaseRepo<T>  {
 	}
 
 	protected async _read(params?: Omit<ReadParams, 'sheet'>): Promise<T[]> {
-		return await this.db.read({ ...params, sheet: this.sheet! }) as T[];
+		return (await this.db.read({ ...params, sheet: this.sheet! })).map((x: SheetDBResponse) => {
+			if (this.track_dates) {
+				x.created_at = new Date(x.created_at);
+				x.updated_at = new Date(x.updated_at);
+			}
+			return x;
+		}) as T[];
 	}
 
 	protected async _create(params: RowData) {

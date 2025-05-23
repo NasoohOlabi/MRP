@@ -1,6 +1,6 @@
 import type { Conversation } from '@grammyjs/conversations';
 import { InlineKeyboard } from 'grammy';
-import type { BaseContext, MyContext, Step, TreeConversationOptions } from '../types';
+import type { BaseContext, ButtonStep, MyContext, Step, TreeConversationOptions } from '../types'; // Ensure StepFn is imported
 
 
 export function createTreeConversation<T>({
@@ -19,14 +19,14 @@ export function createTreeConversation<T>({
 					await ctx.reply(step.prompt);
 					const res = await conv.wait();
 					const text = res.message?.text;
-					if (!step.validate(text)) {
+					if (step.validate && !await step.validate(text) && step.error) {
 						await ctx.reply(step.error);
 						return;
 					}
 
 					const value = text!.trim();
 					results[step.prompt] = value;
-					step = await step.next(value);
+					step = step.next && await step.next(value);
 				} else if (step.type === 'button') {
 					const keyboard = new InlineKeyboard();
 					for (const opt of step.options) {
@@ -37,26 +37,26 @@ export function createTreeConversation<T>({
 
 					await ctx.reply(step.prompt, { reply_markup: keyboard });
 					const btnResponse = await conv.wait();
-					const data = btnResponse.callbackQuery?.data;
+					const clickedBtnData = btnResponse.callbackQuery?.data;
 
-					if (!data) {
+					if (!clickedBtnData) {
 						await btnResponse.reply("Please select an option.");
 						return;
 					}
+					const nextOption: ButtonStep['options'][number] = step.options.find((o) => o.data === clickedBtnData)!;
 
-					await btnResponse.answerCallbackQuery({ text: `You selected ${data}` });
+					await btnResponse.answerCallbackQuery({ text: `You selected ${nextOption.text}` });
 
-					if (step.onSelect) await step.onSelect(data, ctx, btnResponse);
+					if (step.onSelect) await step.onSelect(clickedBtnData, ctx, btnResponse);
 
-					results[step.prompt] = data;
+					results[step.prompt] = clickedBtnData;
+					const potentialNextStep = nextOption.next;
 
-					const selected: {
-						text: string;
-						data: string;
-						url?: string | undefined;
-						next: Step | null;
-					} = step.options.find((o) => o.data === data)!;
-					step = selected?.next ?? null;
+					if (typeof potentialNextStep === 'function') {
+						step = await potentialNextStep(clickedBtnData);
+					} else {
+						step = potentialNextStep;
+					}
 				}
 			}
 

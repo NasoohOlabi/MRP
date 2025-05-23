@@ -1,6 +1,7 @@
-import { StudentRepo } from '../../model/Student';
+import { Student, StudentRepo } from '../../model/Student';
 import type { Step, TextStep } from '../../types';
 import { createTreeConversation } from '../baseConversation';
+import { studentSelectionNode } from './studentSelectionNode';
 
 export const studentCrudConversation = (repo: StudentRepo) => createTreeConversation({
 	entry: {
@@ -44,54 +45,44 @@ export const studentCrudConversation = (repo: StudentRepo) => createTreeConversa
 					prompt: "Which student to update:",
 					validate: (t) => !!t?.trim(),
 					error: "Student is required.",
-					next: async (response: string): Promise<Step | null> => {
-						const results = await repo.lookFor(response)
-						console.log(`results for ${response}`, results)
-						return {
+					next: studentSelectionNode(repo, (student: Student) => {
+						const op = ({ label, value }: { label: string, value: 'first_name' | 'last_name' | 'group' | 'birth_date' | 'cancel' }): TextStep => ({
 							type: 'text',
-							prompt: "Tap on the student number:\n\n" + results.map((s, idx) => `/${idx} - ${s.item.first_name} ${s.item.last_name}`).join('\n'),
-							validate: (t) => !!t && t.trim().startsWith('/') && !isNaN(+t.trim().slice(1)),
-							error: "tap on one of the numbers.",
-							next: async (iStr) => {
-								const i = Number(iStr.slice(1))
-								const student = results[i].item
-								const op = ({ label, value }: { label: string, value: 'first_name' | 'last_name' | 'group' | 'cancel' }): TextStep => ({
-									type: 'text',
-									prompt: `Please enter the new ${label}:`,
-									error: `${label} is required.`,
-									validate: t => !!t?.trim(),
-									next: value === 'cancel' ? () => null : async (newName: string) => {
-										student[value] = newName;
-										const response = await repo.update(student)
-										console.log(`Updated ${value} in ${JSON.stringify(response, null, 2)}`, response)
-										return null
-									}
-								})
-								return {
-									type: 'button',
-									prompt: `Do you want to update the info of \n\n ${student.first_name} ${student.last_name} \n\n ${student.birth_date} \n\n ${student.group}`,
-									options: ([
-										{ label: 'First Name', value: 'first_name' },
-										{ label: 'Last Name', value: 'last_name' },
-										{ label: 'Group', value: 'group' },
-										{ label: 'Cancel', value: 'cancel' }
-									] as const).map(x => ({
-										text: x.label,
-										data: x.value,
-										next: op(x)
-									})),
-									onSelect: async (data, ctx, res) => {
-										if (data === 'cancel') {
-											await res.editMessageText("Operation cancelled.");
-											throw new Error("User cancelled operation.");
-										} else {
-											await res.editMessageText(`You selected ${data.toUpperCase()}`);
-										}
-									},
+							prompt: `Please enter the new ${label}:`,
+							error: `${label} is required.`,
+							validate: t => !!t?.trim(),
+							next: value === 'cancel' ? () => null : async (newName: string) => {
+								student[value] = newName;
+								const response = await repo.update(student)
+								console.log(`Updated ${value} in ${JSON.stringify(response, null, 2)}`, response)
+								return null
+							}
+						})
+						return {
+							type: 'button',
+							prompt: `Do you want to update the info of \n\n ${student.first_name} ${student.last_name} \n\n ${student.birth_date} \n\n ${student.group}`,
+							options: ([
+								{ label: 'First Name', value: 'first_name' },
+								{ label: 'Last Name', value: 'last_name' },
+								{ label: 'Group', value: 'group' },
+								{ label: 'Birth Date', value: 'birth_date' },
+								{ label: 'Cancel', value: 'cancel' }
+							] as const).map(x => ({
+								text: x.label,
+								data: x.value,
+								next: op(x)
+							})),
+							onSelect: async (data, ctx, res) => {
+								if (data === 'cancel') {
+									await res.editMessageText("Operation cancelled.");
+									throw new Error("User cancelled operation.");
+								} else {
+									await res.editMessageText(`You selected ${data.toUpperCase()}`);
 								}
 							},
 						}
-					},
+
+					}),
 				},
 			},
 			{
@@ -143,7 +134,7 @@ export const studentCrudConversation = (repo: StudentRepo) => createTreeConversa
 				first_name: results["Enter first name:"],
 				last_name: results["Enter last name:"],
 				birth_date: results["Enter birth date (YYYY-MM-DD):"],
-				group: "gg",
+				group: results["Enter group:"],
 			});
 		} else if (op === "delete") {
 			// return repo.delete(results["Enter student ID to delete:"]);
@@ -156,4 +147,5 @@ export const studentCrudConversation = (repo: StudentRepo) => createTreeConversa
 	successMessage: "Operation completed successfully.",
 	failureMessage: "Something went wrong during the operation.",
 });
+
 

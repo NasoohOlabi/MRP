@@ -46,10 +46,8 @@ async function orderConversation(
 // register it
 bot.use(createConversation(orderConversation));
 
-const studentCreationConversation = studentCrudConversation(studentRepo)
-
 // Register it with a name
-bot.use(createConversation(studentCreationConversation, 'createStudentConversation'));
+bot.use(createConversation(studentCrudConversation(studentRepo), 'createStudentConversation'));
 
 // --- commands & handlers ---
 bot.command('start', async (ctx) => {

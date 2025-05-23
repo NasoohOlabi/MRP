@@ -11,12 +11,12 @@ export type MyContext = BaseContext & ConversationFlavor<BaseContext>;
 export type BaseStep = {
 	prompt: string;
 };
-
+export type StepFn = ((value: string) => Promise<Step | null>) | ((value: string) => Step | null)
 export type TextStep = BaseStep & {
 	type: 'text';
-	validate: (text: string | undefined) => boolean;
-	error: string;
-	next: ((value: string) => Promise<Step | null>) | ((value: string) => Step | null);
+	validate?: ((text: string | undefined) => boolean) | ((text: string | undefined) => Promise<boolean>);
+	error?: string;
+	next: StepFn | null;
 };
 
 export type ButtonStep = BaseStep & {
@@ -25,7 +25,7 @@ export type ButtonStep = BaseStep & {
 		text: string;
 		data: string;
 		url?: string;
-		next: Step | null;
+		next: Step | null | StepFn;
 	}[];
 	onSelect?: (data: string, ctx: MyContext, btnResponse: MyContext) => Promise<void>;
 };
