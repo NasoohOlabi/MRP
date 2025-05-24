@@ -26,7 +26,7 @@ export const createStep: (repo: TeacherRepo) => ButtonStep['options'][number] = 
 						return {
 							type: 'text',
 							prompt: "This phone number already exists. Please enter a unique phone number:",
-							validate: async (newPhoneNumber) => !await repo.teachersPhoneNumber(newPhoneNumber!) && /^\d{8,}$/.test(newPhoneNumber ?? ""),
+							validate: async (newPhoneNumber) => !await repo.teachersPhoneNumber(newPhoneNumber!),
 							error: "Phone number already exists or is invalid.",
 							next: async (uniquePhoneNumber) => ({
 								type: 'text',

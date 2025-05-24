@@ -1,14 +1,15 @@
 import {
-	Conversation,
 	conversations,
-	createConversation,
+	createConversation
 } from '@grammyjs/conversations';
 import dotenv from 'dotenv';
 import { Bot, session } from 'grammy';
 import { studentCrudConversation } from './conversations/students/studentCrud.js';
+import { teacherCrudConversation } from './conversations/teachers/teacherCrud.js';
 import { StudentRepo } from './model/Student.js';
+import { TeacherRepo } from './model/Teacher.js';
 import { getSheetDBClient } from './sheetdb/sheetdb.js';
-import type { BaseContext, MyContext, MySession } from './types.js';
+import type { MyContext, MySession } from './types.js';
 
 const env = dotenv.config().parsed! as {
 	BOT_TOKEN: string,
@@ -25,6 +26,7 @@ const sheetdb = getSheetDBClient({
 	token: env.SHEET_DB_TOKEN
 });
 const studentRepo = new StudentRepo(sheetdb);
+const teacherRepo = new TeacherRepo(sheetdb);
 
 
 const bot = new Bot<MyContext>(process.env.BOT_TOKEN!);
@@ -33,38 +35,26 @@ const bot = new Bot<MyContext>(process.env.BOT_TOKEN!);
 bot.use(session({ initial: (): MySession => ({ state: 'START' }) }));
 bot.use(conversations());
 
-// --- your conversation ---
-async function orderConversation(
-	conv: Conversation<BaseContext, MyContext>,
-	ctx: MyContext
-) {
-	await ctx.reply('What would you like to order?');
-	const { message } = await conv.wait();
-	await ctx.reply(`You ordered: ${message!.text}`);
-}
-
-// register it
-bot.use(createConversation(orderConversation));
 
 // Register it with a name
 bot.use(createConversation(studentCrudConversation(studentRepo), 'createStudentConversation'));
 
+bot.use(createConversation(teacherCrudConversation(teacherRepo), 'createTeacherConversation'));
+
 // --- commands & handlers ---
 bot.command('start', async (ctx) => {
-	await ctx.reply('Welcome! Order or Support?');
+	await ctx.reply('Welcome! /students or /teachers?');
 	ctx.session.state = 'START';
 });
 
 bot.on('message:text', async (ctx) => {
 	if (ctx.session.state === 'START') {
-		if (ctx.message.text === 'Order') {
-			// conversation.enter is now typed properly
-			await ctx.conversation.enter('orderConversation');
-		} else if (ctx.message.text === 'Student') {
+		if (ctx.message.text.includes('student')) {
 			// conversation.enter is now typed properly
 			await ctx.conversation.enter('createStudentConversation');
-		} else if (ctx.message.text === 'Support') {
-			await ctx.reply('Support flow coming soon.');
+		} else if (ctx.message.text.includes('teacher')) {
+			// conversation.enter is now typed properly
+			await ctx.conversation.enter('createTeacherConversation');
 		} else {
 			await ctx.reply("Sorry, I didn't understand.");
 		}
