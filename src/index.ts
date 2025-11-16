@@ -13,10 +13,7 @@ import type { MyContext, MySession } from './types.js';
 
 const env = dotenv.config().parsed! as {
 	BOT_TOKEN: string,
-	GOOGLE_SHEET_ID: string,
 	LOG_LEVEL: string,
-	SHEET_DB: string,
-	SHEET_DB_TOKEN: string,
 };
 
 
