@@ -21,7 +21,7 @@ export const studentCrudConversation = (repo: StudentRepo) => createTreeConversa
 		onSelect: async (data, ctx, res) => {
 			if (data === 'cancel') {
 				await res.editMessageText("Operation cancelled.");
-				throw new Error("User cancelled operation.");
+				return;
 			} else {
 				await res.editMessageText(`You selected ${data.toUpperCase()}`);
 			}

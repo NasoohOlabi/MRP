@@ -13,7 +13,7 @@ export class Student {
 		public birth_date: string,
 		public group: string,
 		public created_at: Date,
-		public updated_at: string,
+		public updated_at: Date,
 	) { }
 }
 
@@ -25,7 +25,7 @@ export class Teacher {
 		public phone_number: string,
 		public group: string,
 		public created_at: Date,
-		public updated_at: string,
+		public updated_at: Date,
 	) { }
 }
 
@@ -35,7 +35,7 @@ export class Attendance {
 		public student_id: number,
 		public event: string,
 		public created_at: Date,
-		public updated_at: string,
+		public updated_at: Date,
 	) { }
 }
 
@@ -49,10 +49,10 @@ function toStudentDomain(row: typeof studentsTable.$inferSelect): Student {
 		row.firstName,
 		row.lastName,
 		// birthDate stored as Date -> YYYY-MM-DD string
-		row.birthDate ? new Date(row.birthDate).toISOString().slice(0, 10) : '',
+		row.birthDate && !isNaN(new Date(row.birthDate).getTime()) ? new Date(row.birthDate).toISOString().slice(0, 10) : '',
 		row.group,
 		new Date(row.createdAt),
-		new Date(row.updatedAt).toISOString(),
+		new Date(row.updatedAt),
 	);
 }
 
@@ -67,8 +67,8 @@ function toTeacherDomain(row: typeof teachersTable.$inferSelect): Teacher {
 		row.lastName,
 		row.phoneNumber,
 		row.group,
-		new Date(row.createdAt),
-		new Date(row.updatedAt).toISOString(),
+		row.createdAt && !isNaN(new Date(row.createdAt).getTime()) ? new Date(row.createdAt) : new Date(),
+		row.updatedAt && !isNaN(new Date(row.updatedAt).getTime()) ? new Date(row.updatedAt) : new Date(),
 	);
 }
 
@@ -81,8 +81,8 @@ function toAttendanceDomain(row: typeof attendanceTable.$inferSelect): Attendanc
 		row.id,
 		row.studentId,
 		row.event,
-		new Date(row.createdAt),
-		new Date(row.updatedAt).toISOString(),
+		row.createdAt && !isNaN(new Date(row.createdAt).getTime()) ? new Date(row.createdAt) : new Date(),
+		row.updatedAt && !isNaN(new Date(row.updatedAt).getTime()) ? new Date(row.updatedAt) : new Date(),
 	);
 }
 
