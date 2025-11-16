@@ -1,37 +1,38 @@
 # MRP Telegram Bot
 
 This project is a Telegram bot designed to manage student and teacher data. It leverages the grammy.js framework for bot interactions, drizzle-orm for database management, and potentially integrates with Google Sheets for data storage or synchronization.
+**Note**: the bot should be deployed on @MasjidAlBootiBot if you want to try it out
 
 ## Features
 
-*   **Student Management**: Create, read, update, and delete student records.
-*   **Teacher Management**: Create, read, update, and delete teacher records.
-*   **Browse Functionality**: View and search through student and teacher data.
-*   **Conversational Interface**: User-friendly interactions through Telegram commands and guided conversations.
+* **Student Management**: Create, read, update, and delete student records.
+* **Teacher Management**: Create, read, update, and delete teacher records.
+* **Browse Functionality**: View and search through student and teacher data.
+* **Conversational Interface**: User-friendly interactions through Telegram commands and guided conversations.
 
 ## Technologies Used
 
-*   **Bun**: Fast all-in-one JavaScript runtime.
-*   **TypeScript**: Strongly typed superset of JavaScript.
-*   **Grammy.js**: A Telegram Bot API framework for Node.js.
-*   **@grammyjs/conversations**: Plugin for grammy.js to handle multi-step conversations.
-*   **Drizzle ORM**: TypeScript ORM for relational databases.
-*   **dotenv**: Loads environment variables from a `.env` file.
-*   **Google Spreadsheet**: (Potentially) for data storage or integration.
-*   **Fuse.js**: Lightweight fuzzy-search library.
+* **Bun**: Fast all-in-one JavaScript runtime.
+* **TypeScript**: Strongly typed superset of JavaScript.
+* **Grammy.js**: A Telegram Bot API framework for Node.js.
+* **@grammyjs/conversations**: Plugin for grammy.js to handle multi-step conversations.
+* **Drizzle ORM**: TypeScript ORM for relational databases.
+* **dotenv**: Loads environment variables from a `.env` file.
+* **Google Spreadsheet**: (Potentially) for data storage or integration.
+* **Fuse.js**: Lightweight fuzzy-search library.
 
 ## Setup
 
 To get this project up and running, follow these steps:
 
-1.  **Clone the repository**:
+1. **Clone the repository**:
 
     ```bash
     git clone <repository_url>
     cd mrp
     ```
 
-2.  **Install Dependencies**:
+2. **Install Dependencies**:
 
     This project uses `bun` as its package manager. If you don't have `bun` installed, you can install it by following the instructions on [Bun's official website](https://bun.sh/docs/installation).
 
@@ -39,7 +40,7 @@ To get this project up and running, follow these steps:
     bun install
     ```
 
-3.  **Environment Variables**:
+3. **Environment Variables**:
 
     Create a `.env` file in the root directory of the project and add the following environment variables:
 
@@ -48,7 +49,7 @@ To get this project up and running, follow these steps:
     LOG_LEVEL=info
     ```
 
-    *   `BOT_TOKEN`: Obtain this from BotFather on Telegram.
+    * `BOT_TOKEN`: Obtain this from BotFather on Telegram.
 
 ## Running the Bot
 
@@ -68,10 +69,10 @@ bun run dev
 
 Once the bot is running, you can interact with it using the following commands:
 
-*   `/start`: Initiates the bot and displays a welcome message.
-*   `/students`: Enters the student management conversation.
-*   `/teachers`: Enters the teacher management conversation.
-*   `/browse`: Enters the browsing conversation for student and teacher data.
+* `/start`: Initiates the bot and displays a welcome message.
+* `/students`: Enters the student management conversation.
+* `/teachers`: Enters the teacher management conversation.
+* `/browse`: Enters the browsing conversation for student and teacher data.
 
 ## Project Structure
 
