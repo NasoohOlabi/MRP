@@ -36,7 +36,7 @@ bot.use(createConversation(createBrowseConversation(studentRepo, teacherRepo, tr
 
 // --- commands & handlers ---
 bot.command('start', async (ctx) => {
-	await ctx.reply('Welcome! /students or /teachers?');
+	await ctx.reply('Welcome! students or teachers?');
 	ctx.session.state = 'START';
 });
 bot.command('students', async (ctx) => {
@@ -61,7 +61,12 @@ bot.on('message:text', async (ctx) => {
 			// conversation.enter is now typed properly
 			await ctx.conversation.enter('browseStudentsConversation');
 		} else {
-			await ctx.reply("Sorry, I didn't understand.");
+			await ctx.reply(
+				"Sorry, I didn’t understand. Try typing:\n" +
+				"• “student” – interact with the students\n" +
+				"• “teacher” – interact with the students\n" +
+				"• “browse” – browse"
+			);
 		}
 	}
 });
