@@ -1,4 +1,4 @@
-import type { TeacherRepo } from "../../../model/Teacher";
+import type { TeacherRepo } from "../../../model/drizzle/repos";
 import type { ButtonStep, Step, TextStep } from "../../../types";
 
 

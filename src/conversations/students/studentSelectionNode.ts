@@ -1,4 +1,4 @@
-import { Student, StudentRepo } from '../../model/Student';
+import { Student, StudentRepo } from '../../model/drizzle/repos';
 import type { Step } from '../../types';
 
 

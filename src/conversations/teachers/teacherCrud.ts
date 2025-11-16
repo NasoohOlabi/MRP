@@ -1,4 +1,4 @@
-import { TeacherRepo } from '../../model/Teacher';
+import { TeacherRepo } from '../../model/drizzle/repos';
 import type { ButtonStep } from '../../types';
 import { createTreeConversation } from '../baseConversation';
 import { createStep } from './flows/create';

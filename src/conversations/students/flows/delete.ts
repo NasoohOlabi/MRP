@@ -1,4 +1,4 @@
-import type { StudentRepo } from "../../../model/Student"
+import type { StudentRepo } from "../../../model/drizzle/repos"
 import type { ButtonStep, Step } from "../../../types"
 
 

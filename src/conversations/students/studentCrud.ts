@@ -1,4 +1,4 @@
-import { StudentRepo } from '../../model/Student';
+import { StudentRepo } from '../../model/drizzle/repos';
 import { createTreeConversation } from '../baseConversation';
 import { createStep } from './flows/create';
 import { deleteStep } from './flows/delete';

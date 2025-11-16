@@ -1,4 +1,4 @@
-import { Student, StudentRepo } from '../../../model/Student';
+import { Student, StudentRepo } from '../../../model/drizzle/repos';
 import type { ButtonStep, TextStep } from "../../../types";
 import { studentSelectionNode } from '../studentSelectionNode';
 
