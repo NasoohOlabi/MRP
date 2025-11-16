@@ -36,7 +36,7 @@ bot.use(createConversation(createBrowseConversation(studentRepo, teacherRepo, tr
 
 // --- commands & handlers ---
 bot.command('start', async (ctx) => {
-	await ctx.reply('Welcome! students or teachers?');
+	await ctx.reply('Welcome! Please use one of the following commands:\n• /student – to interact with student records\n• /teacher – to interact with teacher records\n• /browse – to browse records');
 	ctx.session.state = 'START';
 });
 bot.command('students', async (ctx) => {
@@ -51,21 +51,21 @@ bot.command('browse', async (ctx) => {
 
 bot.on('message:text', async (ctx) => {
 	if (ctx.session.state === 'START') {
-		if (ctx.message.text.includes('student')) {
+		if (ctx.message.text === '/student') {
 			// conversation.enter is now typed properly
 			await ctx.conversation.enter('createStudentConversation');
-		} else if (ctx.message.text.includes('teacher')) {
+		} else if (ctx.message.text === '/teacher') {
 			// conversation.enter is now typed properly
 			await ctx.conversation.enter('createTeacherConversation');
-		} else if (ctx.message.text.includes('browse')) {
+		} else if (ctx.message.text === '/browse') {
 			// conversation.enter is now typed properly
 			await ctx.conversation.enter('browseStudentsConversation');
 		} else {
 			await ctx.reply(
-				"Sorry, I didn’t understand. Try typing:\n" +
-				"• “student” – interact with the students\n" +
-				"• “teacher” – interact with the students\n" +
-				"• “browse” – browse"
+				"Sorry, I didn’t understand. Please use one of the following commands:\n" +
+				"• /student – to interact with student records\n" +
+				"• /teacher – to interact with teacher records\n" +
+				"• /browse – to browse records"
 			);
 		}
 	}
