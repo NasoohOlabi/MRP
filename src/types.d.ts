@@ -30,7 +30,8 @@ export interface ButtonOption<K extends AnswerKey = AnswerKey> {
   text: string;
   data: string;
   url?: string;
-  next: Promisify<Step | null>;
+  // Allow lazy evaluation to avoid eager building of complex next steps
+  next: Promisify<Step | null> | (() => Promisify<Step | null>);
 }
 
 export interface ButtonStep<K extends AnswerKey = AnswerKey> {

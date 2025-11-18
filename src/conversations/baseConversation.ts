@@ -40,6 +40,11 @@ export function createTreeConversation<S extends Step>(
         } else if (step.type === "button") {
           const keyboard = new InlineKeyboard();
           for (const opt of step.options) {
+            // Support row breaks using a sentinel data value
+            if (opt.data === "__row__") {
+              keyboard.row();
+              continue;
+            }
             opt.url
               ? keyboard.url(opt.text, opt.url)
               : keyboard.text(opt.text, opt.data);
@@ -87,7 +92,12 @@ export function createTreeConversation<S extends Step>(
           results[step.key] = data;
 
           /* ---------- compute next node ---------- */
-          const potential = await opt.next;
+          let potential: Step | null;
+          if (typeof opt.next === 'function') {
+            potential = await (opt.next as () => Promise<Step | null>)();
+          } else {
+            potential = await opt.next;
+          }
           step = potential;
 
           /* ---------- leave in-place mode? ---------- */
