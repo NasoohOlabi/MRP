@@ -187,10 +187,16 @@ export class TeacherRepo {
 		return fuse.search(response);
 	}
 
-	public async teachersPhoneNumber(phone_number: string): Promise<boolean> {
-		const rows = await db.select().from(teachersTable).where(eq(teachersTable.phoneNumber, phone_number));
-		return rows.length > 0;
-	}
+  public async teachersPhoneNumber(phone_number: string): Promise<boolean> {
+    const rows = await db.select().from(teachersTable).where(eq(teachersTable.phoneNumber, phone_number));
+    return rows.length > 0;
+  }
+
+  public async findByPhone(phone_number: string): Promise<Teacher | null> {
+    const rows = await db.select().from(teachersTable).where(eq(teachersTable.phoneNumber, phone_number));
+    if (!rows.length) return null;
+    return toTeacherDomain(rows[0]);
+  }
 }
 
 export class AttendanceRepo {
@@ -232,13 +238,22 @@ export class AttendanceRepo {
 		return toAttendanceDomain(row);
 	}
 
-	public async delete(att: Attendance): Promise<{ success: boolean }> {
-		await db.delete(attendanceTable).where(eq(attendanceTable.id, att.id));
-		return { success: true };
-	}
+  public async delete(att: Attendance): Promise<{ success: boolean }> {
+    await db.delete(attendanceTable).where(eq(attendanceTable.id, att.id));
+    return { success: true };
+  }
 
-	public async hasAttended(studentId: number, eventName: string, date: Date): Promise<boolean> {
-		const rows = await db.select().from(attendanceTable).where(eq(attendanceTable.studentId, studentId));
-		return rows.some(r => r.createdAt != null && r.event === eventName && this.isSameDay(new Date(r.createdAt), date));
-	}
+  public async hasAttended(studentId: number, eventName: string, date: Date): Promise<boolean> {
+    const rows = await db.select().from(attendanceTable).where(eq(attendanceTable.studentId, studentId));
+    return rows.some(r => r.createdAt != null && r.event === eventName && this.isSameDay(new Date(r.createdAt), date));
+  }
+
+  public async deleteToday(studentId: number, eventName: string): Promise<{ success: boolean }> {
+    const today = new Date();
+    const rows = await db.select().from(attendanceTable).where(eq(attendanceTable.studentId, studentId));
+    const target = rows.find(r => r.id != null && r.createdAt != null && r.event === eventName && this.isSameDay(new Date(r.createdAt), today));
+    if (!target) return { success: false };
+    await db.delete(attendanceTable).where(eq(attendanceTable.id, target.id!));
+    return { success: true };
+  }
 }

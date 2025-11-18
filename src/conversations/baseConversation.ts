@@ -76,9 +76,9 @@ export function createTreeConversation<S extends Step>(
           const data = btnCtx.callbackQuery?.data;
 
           if (!data) {
-            await btnCtx.answerCallbackQuery({
-              text: "Please select an option",
-            });
+            if (btnCtx.callbackQuery) {
+              await btnCtx.answerCallbackQuery({ text: "Please select an option" });
+            }
             continue; // stay on same node
           }
 
