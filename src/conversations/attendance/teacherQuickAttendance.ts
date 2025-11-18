@@ -2,6 +2,7 @@ import type { Conversation } from '@grammyjs/conversations';
 import { InlineKeyboard } from 'grammy';
 import { AttendanceRepo, StudentRepo, TeacherRepo } from '../../model/drizzle/repos';
 import type { BaseContext, MyContext } from '../../types';
+import { cancelAndGreet } from '../../utils/greeting.js';
 
 export const createTeacherQuickAttendance = (
   attRepo: AttendanceRepo,
@@ -13,7 +14,7 @@ export const createTeacherQuickAttendance = (
   await ctx.reply('Choose event', { reply_markup: startKb });
   let res = await conv.wait();
   const ev = res.callbackQuery?.data;
-  if (!ev || ev === 'cancel') { await ctx.reply('Cancelled'); return; }
+  if (!ev || ev === 'cancel') { await cancelAndGreet(ctx, res); return; }
   let event = ev.startsWith('ev:') && ev !== 'ev:custom' ? ev.split(':')[1] : '';
   if (ev === 'ev:custom') {
     await ctx.reply('Type event name');
@@ -51,7 +52,7 @@ export const createTeacherQuickAttendance = (
     const r = await conv.wait();
     cmd = r.callbackQuery?.data || null;
     if (!cmd) continue;
-    if (cmd === 'cancel') { await r.answerCallbackQuery({ text: 'Cancelled' }); return; }
+    if (cmd === 'cancel') { await cancelAndGreet(ctx, r); return; }
     if (cmd === 'finish') { await ctx.reply(`Saved ${marked.size}`); return; }
     if (cmd === 'next') page = Math.min(page + 1, totalPages - 1);
     if (cmd === 'previous') page = Math.max(page - 1, 0);

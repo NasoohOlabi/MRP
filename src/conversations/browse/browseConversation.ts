@@ -2,6 +2,7 @@ import type { Conversation } from '@grammyjs/conversations';
 import { InlineKeyboard } from 'grammy';
 import { Student, StudentRepo, TeacherRepo } from '../../model/drizzle/repos';
 import type { BaseContext, MyContext } from '../../types';
+import { cancelAndGreet } from '../../utils/greeting.js';
 
 export const createBrowseConversation = (studentRepo: StudentRepo, teacherRepo: TeacherRepo, isTeacher: boolean) => async (conv: Conversation<BaseContext, MyContext>, ctx: MyContext) => {
     const first = new InlineKeyboard();
@@ -22,10 +23,7 @@ export const createBrowseConversation = (studentRepo: StudentRepo, teacherRepo: 
     const kind = res.callbackQuery?.data;
     if (res.callbackQuery) await res.answerCallbackQuery();
     if (!kind) return;
-    if (kind === 'cancel') {
-        await sendOrEdit('Cancelled.');
-        return;
-    }
+    if (kind === 'cancel') { await cancelAndGreet(ctx, res); return; }
 
     let baseList = kind === 'students' ? await studentRepo.read() : await teacherRepo.read();
     baseList.sort((a, b) => {
@@ -50,10 +48,7 @@ export const createBrowseConversation = (studentRepo: StudentRepo, teacherRepo: 
     let filtered = baseList.slice();
     if (res.callbackQuery) await res.answerCallbackQuery();
     if (!filterCmd) return;
-    if (filterCmd === 'cancel') {
-        await sendOrEdit('Cancelled.');
-        return;
-    }
+    if (filterCmd === 'cancel') { await cancelAndGreet(ctx, res); return; }
     if (filterCmd.startsWith('group:')) {
         const g = filterCmd.split(':')[1];
         filtered = baseList.filter(x => x.group === g);
@@ -77,10 +72,7 @@ export const createBrowseConversation = (studentRepo: StudentRepo, teacherRepo: 
     const sizeCmd = res.callbackQuery?.data;
     if (res.callbackQuery) await res.answerCallbackQuery();
     if (!sizeCmd) return;
-    if (sizeCmd === 'cancel') {
-        await sendOrEdit('Cancelled.');
-        return;
-    }
+    if (sizeCmd === 'cancel') { await cancelAndGreet(ctx, res); return; }
     let pageSize = sizeCmd.startsWith('size:') ? parseInt(sizeCmd.split(':')[1], 10) : 5;
 
     let page = 0;
@@ -102,10 +94,7 @@ export const createBrowseConversation = (studentRepo: StudentRepo, teacherRepo: 
         res = await conv.wait();
         cmd = res.callbackQuery?.data || null;
         if (!cmd) continue;
-        if (cmd === 'cancel') {
-            if (res.callbackQuery) await res.answerCallbackQuery({ text: 'Cancelled' });
-            return;
-        }
+        if (cmd === 'cancel') { await cancelAndGreet(ctx, res); return; }
         if (cmd === 'next' || cmd === 'previous') { if (res.callbackQuery) await res.answerCallbackQuery(); }
         if (cmd === 'next') page = Math.min(page + 1, totalPages - 1);
         if (cmd === 'previous') page = Math.max(page - 1, 0);
@@ -116,7 +105,7 @@ export const createBrowseConversation = (studentRepo: StudentRepo, teacherRepo: 
             const r2 = await conv.wait();
             const c2 = r2.callbackQuery?.data;
             if (r2.callbackQuery) await r2.answerCallbackQuery();
-            if (c2 === 'cancel') return;
+            if (c2 === 'cancel') { await cancelAndGreet(ctx, r2); return; }
             if (c2 && c2.startsWith('size:')) pageSize = parseInt(c2.split(':')[1], 10);
         }
         if (cmd === 'change_filter') {
@@ -128,7 +117,7 @@ export const createBrowseConversation = (studentRepo: StudentRepo, teacherRepo: 
             const r3 = await conv.wait();
             const c3 = r3.callbackQuery?.data;
             if (r3.callbackQuery) await r3.answerCallbackQuery();
-            if (!c3 || c3 === 'cancel') return;
+            if (!c3 || c3 === 'cancel') { await cancelAndGreet(ctx, r3); return; }
             if (c3.startsWith('group:')) {
                 const g = c3.split(':')[1];
                 filtered = baseList.filter(x => x.group === g);

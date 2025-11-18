@@ -8,6 +8,7 @@ import type {
   Step,
   TreeConversationOptions,
 } from "../types";
+import { cancelAndGreet } from "../utils/greeting.js";
 
 interface InPlaceMeta {
   chatId: number;
@@ -82,10 +83,13 @@ export function createTreeConversation<S extends Step>(
             continue; // stay on same node
           }
 
+          if (data === 'cancel') {
+            await cancelAndGreet(ctx, btnCtx);
+            inPlaceMeta = undefined;
+            return;
+          }
           const opt: ButtonOption<AnswerKey<string>> = step.options.find((o) => o.data === data)!;
-          await btnCtx.answerCallbackQuery({
-            text: `You selected ${opt.text}`,
-          });
+          await btnCtx.answerCallbackQuery({ text: `You selected ${opt.text}` });
 
           if (step.onSelect) await step.onSelect(data, ctx, btnCtx);
 

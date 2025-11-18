@@ -2,6 +2,7 @@ import type { Conversation } from '@grammyjs/conversations';
 import { InlineKeyboard } from 'grammy';
 import { AttendanceRepo, StudentRepo, Student } from '../../model/drizzle/repos';
 import type { BaseContext, MyContext } from '../../types';
+import { cancelAndGreet } from '../../utils/greeting.js';
 
 export const createAttendanceConversation = (attRepo: AttendanceRepo, studentRepo: StudentRepo) => async (conv: Conversation<BaseContext, MyContext>, ctx: MyContext) => {
   const first = new InlineKeyboard();
@@ -12,7 +13,7 @@ export const createAttendanceConversation = (attRepo: AttendanceRepo, studentRep
   const action = res.callbackQuery?.data;
   if (res.callbackQuery) await res.answerCallbackQuery();
   if (!action) return;
-  if (action === 'cancel') { await res.reply('Cancelled.'); return; }
+  if (action === 'cancel') { await cancelAndGreet(ctx, res); return; }
 
   const allStudents = await studentRepo.read();
   const groups = Array.from(new Set(allStudents.map(s => s.group))).sort();
@@ -29,7 +30,7 @@ export const createAttendanceConversation = (attRepo: AttendanceRepo, studentRep
     let gRes = await conv.wait();
     const gCmd = gRes.callbackQuery?.data;
     if (gRes.callbackQuery) await gRes.answerCallbackQuery();
-    if (!gCmd || gCmd === 'cancel') { await ctx.reply('Cancelled.'); return; }
+    if (!gCmd || gCmd === 'cancel') { await cancelAndGreet(ctx, gRes); return; }
     const group = gCmd.split(':')[1];
     const pool = allStudents.filter(s => s.group === group);
 
@@ -49,7 +50,7 @@ export const createAttendanceConversation = (attRepo: AttendanceRepo, studentRep
       const r = await conv.wait();
       cmd = r.callbackQuery?.data || null;
       if (!cmd) continue;
-      if (cmd === 'cancel') { await r.answerCallbackQuery({ text: 'Cancelled' }); return; }
+      if (cmd === 'cancel') { await cancelAndGreet(ctx, r); return; }
       if (cmd === 'next' || cmd === 'previous') { await r.answerCallbackQuery(); }
       if (cmd === 'next') page = Math.min(page + 1, totalPages - 1);
       if (cmd === 'previous') page = Math.max(page - 1, 0);
@@ -75,7 +76,7 @@ export const createAttendanceConversation = (attRepo: AttendanceRepo, studentRep
     const gRes = await conv.wait();
     const gCmd = gRes.callbackQuery?.data;
     if (gRes.callbackQuery) await gRes.answerCallbackQuery();
-    if (!gCmd || gCmd === 'cancel') { await ctx.reply('Cancelled.'); return; }
+    if (!gCmd || gCmd === 'cancel') { await cancelAndGreet(ctx, gRes); return; }
     const today = new Date();
     const isSameDay = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
     const all = await attRepo.read();
@@ -103,7 +104,7 @@ export const createAttendanceConversation = (attRepo: AttendanceRepo, studentRep
     await ctx.reply('Select group', { reply_markup: gKb });
     const gRes = await conv.wait();
     const gCmd = gRes.callbackQuery?.data;
-    if (!gCmd || gCmd === 'cancel') { await ctx.reply('Cancelled.'); return; }
+    if (!gCmd || gCmd === 'cancel') { await cancelAndGreet(ctx, gRes); return; }
     const group = gCmd.split(':')[1];
     const today = new Date();
     const isSameDay = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
@@ -129,7 +130,7 @@ export const createAttendanceConversation = (attRepo: AttendanceRepo, studentRep
       const r = await conv.wait();
       cmd = r.callbackQuery?.data || null;
       if (!cmd) continue;
-      if (cmd === 'cancel') { await r.answerCallbackQuery({ text: 'Cancelled' }); return; }
+      if (cmd === 'cancel') { await cancelAndGreet(ctx, r); return; }
       if (cmd === 'next' || cmd === 'previous') { await r.answerCallbackQuery(); }
       if (cmd === 'next') page = Math.min(page + 1, totalPages - 1);
       if (cmd === 'previous') page = Math.max(page - 1, 0);

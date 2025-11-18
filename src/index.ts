@@ -4,6 +4,7 @@ import {
 } from '@grammyjs/conversations';
 import dotenv from 'dotenv';
 import { Bot, session } from 'grammy';
+import { sendGreeting } from './utils/greeting.js';
 import { createBrowseConversation } from './conversations/browse/browseConversation.js';
 import { studentCrudConversation } from './conversations/students/studentCrud.js';
 import { teacherCrudConversation } from './conversations/teachers/teacherCrud.js';
@@ -36,8 +37,7 @@ bot.use(createConversation(createBrowseConversation(studentRepo, teacherRepo, tr
 
 // --- commands & handlers ---
 bot.command('start', async (ctx) => {
-	await ctx.reply('Welcome! Please use one of the following commands:\n• /student – to interact with student records\n• /teacher – to interact with teacher records\n• /browse – to browse records');
-	ctx.session.state = 'START';
+    await sendGreeting(ctx);
 });
 bot.command('students', async (ctx) => {
 	await ctx.conversation.enter('createStudentConversation');
