@@ -9,7 +9,8 @@ import { createBrowseConversation } from './conversations/browse/browseConversat
 import { studentCrudConversation } from './conversations/students/studentCrud.js';
 import { teacherCrudConversation } from './conversations/teachers/teacherCrud.js';
 import { memorizationConversation } from './conversations/memorization/memorizationConversation.js';
-import { StudentRepo, TeacherRepo, MemorizationRepo } from './model/drizzle/repos.js';
+import { createAttendanceTakingConversation } from './conversations/attendance/attendanceTaking.js';
+import { StudentRepo, TeacherRepo, MemorizationRepo, AttendanceRepo } from './model/drizzle/repos.js';
 
 import type { MyContext, MySession } from './types.js';
 
@@ -23,6 +24,7 @@ const env = dotenv.config().parsed! as {
 const studentRepo = new StudentRepo();
 const teacherRepo = new TeacherRepo();
 const memorizationRepo = new MemorizationRepo();
+const attendanceRepo = new AttendanceRepo();
 
 
 const bot = new Bot<MyContext>(process.env.BOT_TOKEN!);
@@ -37,6 +39,7 @@ bot.use(createConversation(studentCrudConversation(studentRepo), 'createStudentC
 bot.use(createConversation(teacherCrudConversation(teacherRepo), 'createTeacherConversation'));
 bot.use(createConversation(createBrowseConversation(studentRepo, teacherRepo, true), 'browseStudentsConversation'));
 bot.use(createConversation(memorizationConversation(studentRepo, memorizationRepo), 'createMemorizationConversation'));
+bot.use(createConversation(createAttendanceTakingConversation(attendanceRepo, studentRepo), 'attendanceTakingConversation'));
 
 // --- commands & handlers ---
 bot.command('start', async (ctx) => {
@@ -54,6 +57,9 @@ bot.command('browse', async (ctx) => {
 bot.command('memorize', async (ctx) => {
 	await ctx.conversation.enter('createMemorizationConversation');
 })
+bot.command('attendance', async (ctx) => {
+	await ctx.conversation.enter('attendanceTakingConversation');
+})
 
 bot.on('message:text', async (ctx) => {
 	if (ctx.session.state === 'START') {
@@ -68,13 +74,16 @@ bot.on('message:text', async (ctx) => {
 			await ctx.conversation.enter('browseStudentsConversation');
 		} else if (ctx.message.text === '/memorize') {
 			await ctx.conversation.enter('createMemorizationConversation');
+		} else if (ctx.message.text === '/attendance') {
+			await ctx.conversation.enter('attendanceTakingConversation');
 		} else {
 			await ctx.reply(
-				"Sorry, I didn’t understand. Please use one of the following commands:\n" +
+				"Sorry, I didn't understand. Please use one of the following commands:\n" +
 				"• /student – to interact with student records\n" +
 				"• /teacher – to interact with teacher records\n" +
 				"• /browse – to browse records\n" +
-				"• /memorize – to record student memorization"
+				"• /memorize – to record student memorization\n" +
+				"• /attendance – to take attendance"
 			);
 		}
 	}

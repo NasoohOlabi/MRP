@@ -1,5 +1,5 @@
 export const ar = {
-    greeting: "أهلاً بك! يرجى استخدام أحد الأوامر التالية:\n• /student – للتعامل مع سجلات الطلاب\n• /teacher – للتعامل مع سجلات المعلمين\n• /browse – لتصفح السجلات\n• /memorize – لتسجيل حفظ الطلاب",
+    greeting: "أهلاً بك! يرجى استخدام أحد الأوامر التالية:\n• /student – للتعامل مع سجلات الطلاب\n• /teacher – للتعامل مع سجلات المعلمين\n• /browse – لتصفح السجلات\n• /memorize – لتسجيل حفظ الطلاب\n• /attendance – لتسجيل الحضور",
     cancel: "إلغاء",
     operation_cancelled: "تم إلغاء العملية.",
     you_selected: "لقد اخترت",
@@ -38,4 +38,19 @@ export const ar = {
     invalid_page: "رقم الصفحة غير صالح. يرجى إدخال رقم بين 0 و 604.",
     memorization_saved: "تم حفظ سجل الحفظ!",
     memorization_failed: "فشل حفظ سجل الحفظ.",
+
+    // Attendance
+    attendance_method: "كيف تريد تسجيل الحضور؟",
+    by_group: "حسب المجموعة",
+    all_students: "جميع الطلاب",
+    by_first_name: "حسب الاسم الأول",
+    by_last_name: "حسب اسم العائلة",
+    by_search: "البحث عن طالب",
+    enter_event_name: "أدخل اسم الحدث:",
+    select_group: "اختر المجموعة:",
+    mark_present: "تسجيل الحضور",
+    marked_present: "تم تسجيل الحضور",
+    already_marked: "تم التسجيل مسبقاً اليوم",
+    page_info: "صفحة {current}/{total}",
+    attendance_for: "الحضور لـ: {event}",
 };

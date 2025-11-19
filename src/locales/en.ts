@@ -1,5 +1,5 @@
 export const en = {
-    greeting: "Welcome! Please use one of the following commands:\n• /student – to interact with student records\n• /teacher – to interact with teacher records\n• /browse – to browse records\n• /memorize – to record student memorization",
+    greeting: "Welcome! Please use one of the following commands:\n• /student – to interact with student records\n• /teacher – to interact with teacher records\n• /browse – to browse records\n• /memorize – to record student memorization\n• /attendance – to take attendance",
     cancel: "Cancel",
     operation_cancelled: "Operation cancelled.",
     you_selected: "You selected",
@@ -38,4 +38,19 @@ export const en = {
     invalid_page: "Invalid page number. Please enter a number between 0 and 604.",
     memorization_saved: "Memorization record saved!",
     memorization_failed: "Failed to save memorization record.",
+
+    // Attendance
+    attendance_method: "How would you like to take attendance?",
+    by_group: "By Group",
+    all_students: "All Students",
+    by_first_name: "By First Name",
+    by_last_name: "By Last Name",
+    by_search: "Search Student",
+    enter_event_name: "Enter event name:",
+    select_group: "Select group:",
+    mark_present: "Mark Present",
+    marked_present: "Marked present",
+    already_marked: "Already marked today",
+    page_info: "Page {current}/{total}",
+    attendance_for: "Attendance for: {event}",
 };
