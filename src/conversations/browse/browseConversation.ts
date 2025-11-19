@@ -74,15 +74,7 @@ export const createBrowseConversation = (studentRepo: StudentRepo, teacherRepo: 
         }
     }
 
-    const sizeKb = new InlineKeyboard();
-    sizeKb.text('2', 'size:2').text('5', 'size:5').text('10', 'size:10').row().text(t('cancel', getLang(ctx.session)), 'cancel');
-    await sendOrEdit(t('page_size', getLang(ctx.session)), sizeKb);
-    res = await conv.wait();
-    const sizeCmd = res.callbackQuery?.data;
-    if (res.callbackQuery) await res.answerCallbackQuery();
-    if (!sizeCmd) return;
-    if (sizeCmd === 'cancel') { await cancelAndGreet(ctx, res); return; }
-    let pageSize = sizeCmd.startsWith('size:') ? parseInt(sizeCmd.split(':')[1], 10) : 5;
+    let pageSize = 10;
 
     let page = 0;
     let cmd: string | null = null;
@@ -91,7 +83,7 @@ export const createBrowseConversation = (studentRepo: StudentRepo, teacherRepo: 
         const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
         if (page > 0) kb.text(t('previous', getLang(ctx.session)), 'previous');
         if (page < totalPages - 1) kb.text(t('next', getLang(ctx.session)), 'next');
-        kb.row().text(t('change_size', getLang(ctx.session)), 'change_size').text(t('change_filter', getLang(ctx.session)), 'change_filter').text(t('cancel', getLang(ctx.session)), 'cancel');
+        kb.row().text(t('change_filter', getLang(ctx.session)), 'change_filter').text(t('cancel', getLang(ctx.session)), 'cancel');
 
         const slice = filtered.slice(page * pageSize, (page + 1) * pageSize);
         const title = kind === 'students' ? t('students', getLang(ctx.session)) : t('teachers', getLang(ctx.session));
@@ -107,16 +99,6 @@ export const createBrowseConversation = (studentRepo: StudentRepo, teacherRepo: 
         if (cmd === 'next' || cmd === 'previous') { if (res.callbackQuery) await res.answerCallbackQuery(); }
         if (cmd === 'next') page = Math.min(page + 1, totalPages - 1);
         if (cmd === 'previous') page = Math.max(page - 1, 0);
-        if (cmd === 'change_size') {
-            const kb2 = new InlineKeyboard();
-            kb2.text('2', 'size:2').text('5', 'size:5').text('10', 'size:10').row().text(t('cancel', getLang(ctx.session)), 'cancel');
-            await sendOrEdit(t('page_size', getLang(ctx.session)), kb2);
-            const r2 = await conv.wait();
-            const c2 = r2.callbackQuery?.data;
-            if (r2.callbackQuery) await r2.answerCallbackQuery();
-            if (c2 === 'cancel') { await cancelAndGreet(ctx, r2); return; }
-            if (c2 && c2.startsWith('size:')) pageSize = parseInt(c2.split(':')[1], 10);
-        }
         if (cmd === 'change_filter') {
             const kb3 = new InlineKeyboard();
             kb3.text(t('all', getLang(ctx.session)), 'all').row();

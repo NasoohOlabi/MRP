@@ -24,10 +24,10 @@ export const ar = {
     all: "الكل",
     search: "بحث",
     type_search: "اكتب اسماً للبحث",
-    page_size: "حجم الصفحة",
+
     previous: "السابق",
     next: "التالي",
-    change_size: "تغيير الحجم",
+
     change_filter: "تغيير التصفية",
     no_results: "لا توجد نتائج",
     create: "إنشاء",

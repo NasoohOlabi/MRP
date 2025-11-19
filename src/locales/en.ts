@@ -24,10 +24,10 @@ export const en = {
     all: "All",
     search: "Search",
     type_search: "Type a name to search",
-    page_size: "Page size",
+
     previous: "Previous",
     next: "Next",
-    change_size: "Change size",
+
     change_filter: "Change filter",
     no_results: "No results",
     create: "Create",
