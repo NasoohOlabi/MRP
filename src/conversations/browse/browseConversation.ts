@@ -39,9 +39,13 @@ export const createBrowseConversation = (studentRepo: StudentRepo, teacherRepo: 
 
     const groups = Array.from(new Set(baseList.map(x => x.group))).sort();
     const filterKb = new InlineKeyboard();
-    filterKb.text(t('all', getLang(ctx.session)), 'all');
-    for (const g of groups) filterKb.text(g, `group:${g}`);
-    filterKb.row().text(t('search', getLang(ctx.session)), 'search').text(t('cancel', getLang(ctx.session)), 'cancel');
+    filterKb.text(t('all', getLang(ctx.session)), 'all').row();
+    for (let i = 0; i < groups.length; i++) {
+        filterKb.text(groups[i], `group:${groups[i]}`);
+        if (i % 2 === 1) filterKb.row();
+    }
+    if (groups.length % 2 === 1) filterKb.row();
+    filterKb.text(t('search', getLang(ctx.session)), 'search').text(t('cancel', getLang(ctx.session)), 'cancel');
     await sendOrEdit(t('filter_search', getLang(ctx.session)), filterKb);
 
     res = await conv.wait();
@@ -115,9 +119,13 @@ export const createBrowseConversation = (studentRepo: StudentRepo, teacherRepo: 
         }
         if (cmd === 'change_filter') {
             const kb3 = new InlineKeyboard();
-            kb3.text(t('all', getLang(ctx.session)), 'all');
-            for (const g of groups) kb3.text(g, `group:${g}`);
-            kb3.row().text(t('search', getLang(ctx.session)), 'search').text(t('cancel', getLang(ctx.session)), 'cancel');
+            kb3.text(t('all', getLang(ctx.session)), 'all').row();
+            for (let i = 0; i < groups.length; i++) {
+                kb3.text(groups[i], `group:${groups[i]}`);
+                if (i % 2 === 1) kb3.row();
+            }
+            if (groups.length % 2 === 1) kb3.row();
+            kb3.text(t('search', getLang(ctx.session)), 'search').text(t('cancel', getLang(ctx.session)), 'cancel');
             await sendOrEdit(t('filter_search', getLang(ctx.session)), kb3);
             const r3 = await conv.wait();
             const c3 = r3.callbackQuery?.data;
