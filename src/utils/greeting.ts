@@ -12,9 +12,11 @@ export async function deleteCallbackMessage(btnCtx?: MyContext) {
   await btnCtx!.api.deleteMessage(m.chat.id, m.message_id);
 }
 
-export async function cancelAndGreet(ctx: MyContext, btnCtx?: MyContext) {
+export async function cancelAndGreet(ctx: MyContext, btnCtx?: MyContext, summaryText?: string) {
   try {
     await deleteCallbackMessage(btnCtx);
   } catch { }
+  const lang = getLang(ctx.session);
+  await ctx.reply(t(summaryText || 'operation_cancelled', lang));
   await sendGreeting(ctx);
 }

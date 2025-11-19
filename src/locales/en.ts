@@ -53,4 +53,9 @@ export const en = {
     already_marked: "Already marked today",
     page_info: "Page {current}/{total}",
     attendance_for: "Attendance for: {event}",
+    marked_absent: "Marked absent",
+    nothing_to_undo: "Nothing to undo",
+    attendance_saved: "Attendance saved",
+    undo: "Undo",
+    save: "Save",
 };

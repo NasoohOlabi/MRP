@@ -53,4 +53,9 @@ export const ar = {
     already_marked: "تم التسجيل مسبقاً اليوم",
     page_info: "صفحة {current}/{total}",
     attendance_for: "الحضور لـ: {event}",
+    marked_absent: "تم وضع علامة غائب",
+    nothing_to_undo: "لا يوجد شيء للتراجع عنه",
+    attendance_saved: "تم حفظ الحضور",
+    undo: "تراجع",
+    save: "حفظ",
 };

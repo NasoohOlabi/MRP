@@ -26,7 +26,7 @@ export const createAttendanceTakingConversation = (attRepo: AttendanceRepo, stud
         const method = res.callbackQuery?.data as AttendanceMethod | 'cancel' | undefined;
         if (res.callbackQuery) await res.answerCallbackQuery();
         if (!method || method === 'cancel') {
-            await cancelAndGreet(ctx, res);
+            await cancelAndGreet(ctx, res, 'operation_cancelled');
             return;
         }
 
@@ -72,29 +72,39 @@ async function displayStudentList(
     lang: string,
     title: string
 ) {
+    let unmarkedStudents = students;
+    const markedStudents: { student_id: number; status: 'present' | 'absent'; event: string }[] = [];
+    const actionHistory: { student: Student; status: 'present' | 'absent' }[] = [];
     let page = 0;
     const pageSize = 10;
-    let cmd: string | null = null;
     let messageId: number | undefined;
+    let cmd: string | null = null;
 
     do {
-        const totalPages = Math.max(1, Math.ceil(students.length / pageSize));
-        const slice = students.slice(page * pageSize, (page + 1) * pageSize);
+        const totalPages = Math.max(1, Math.ceil(unmarkedStudents.length / pageSize));
+        const slice = unmarkedStudents.slice(page * pageSize, (page + 1) * pageSize);
 
         const kb = new InlineKeyboard();
         for (const s of slice) {
-            kb.text(`${s.first_name} ${s.last_name}`, `mark:${s.id}`).row();
+            kb.text(`${s.first_name} ${s.last_name}`, `view:${s.id}`)
+                .text('❌', `absent:${s.id}`)
+                .text('✅', `present:${s.id}`)
+                .row();
         }
 
         if (page > 0) kb.text(t('previous', lang), 'previous');
         if (page < totalPages - 1) kb.text(t('next', lang), 'next');
-        kb.row().text(t('cancel', lang), 'cancel');
+        kb.row();
+
+        kb.text(t('cancel', lang), 'cancel')
+            .text(t('undo', lang), 'undo')
+            .text(t('save', lang), 'save')
+            .row();
 
         const pageInfo = t('page_info', lang)
             .replace('{current}', String(page + 1))
             .replace('{total}', String(totalPages));
         const attendanceFor = t('attendance_for', lang).replace('{event}', event);
-
         const newText = `${attendanceFor}\n${title}\n${pageInfo}`;
 
         if (messageId) {
@@ -110,7 +120,7 @@ async function displayStudentList(
         if (!cmd) continue;
 
         if (cmd === 'cancel') {
-            await cancelAndGreet(ctx, r);
+            await cancelAndGreet(ctx, r, 'operation_cancelled');
             return;
         }
 
@@ -122,18 +132,46 @@ async function displayStudentList(
             page = Math.min(page + 1, totalPages - 1);
         } else if (cmd === 'previous') {
             page = Math.max(page - 1, 0);
-        } else if (cmd.startsWith('mark:')) {
-            const id = parseInt(cmd.split(':')[1], 10);
-            const created = await attRepo.create({ student_id: id, event });
-
-            if (created) {
-                await r.answerCallbackQuery({ text: t('marked_present', lang) });
-                // Remove the marked student from the list
-                students = students.filter(s => s.id !== id);
-                // Reset page to ensure we don't end up on an empty page if the last student on a page was marked
-                page = Math.min(page, Math.max(0, Math.ceil(students.length / pageSize) - 1));
+        } else if (cmd === 'undo') {
+            if (actionHistory.length > 0) {
+                const lastAction = actionHistory.pop();
+                if (lastAction) {
+                    unmarkedStudents.push(lastAction.student);
+                    unmarkedStudents.sort((a, b) => a.last_name.localeCompare(b.last_name) || a.first_name.localeCompare(b.first_name));
+                    const index = markedStudents.findIndex(
+                        (ms) => ms.student_id === lastAction.student.id && ms.status === lastAction.status
+                    );
+                    if (index > -1) {
+                        markedStudents.splice(index, 1);
+                    }
+                    // Adjust page if necessary after undoing
+                    page = Math.min(page, Math.max(0, Math.ceil(unmarkedStudents.length / pageSize) - 1));
+                }
             } else {
-                await r.answerCallbackQuery({ text: t('already_marked', lang) });
+                await ctx.answerCallbackQuery({ text: t('nothing_to_undo', lang) });
+            }
+        } else if (cmd === 'save') {
+            for (const record of markedStudents) {
+                await attRepo.create({ student_id: record.student_id, event: record.event });
+            }
+            if (messageId) {
+                await ctx.api.deleteMessage(ctx.chat?.id!, messageId);
+            }
+            await ctx.reply(t('attendance_saved', lang));
+            return;
+        } else if (cmd.startsWith('present:') || cmd.startsWith('absent:')) {
+            const [action, idStr] = cmd.split(':');
+            const id = parseInt(idStr, 10);
+            const student = unmarkedStudents.find((s) => s.id === id);
+
+            if (student) {
+                const status = action === 'present' ? 'present' : 'absent';
+                markedStudents.push({ student_id: id, status, event });
+                actionHistory.push({ student, status });
+                unmarkedStudents = unmarkedStudents.filter((s) => s.id !== id);
+                // Adjust page to ensure we don't end up on an empty page if the last student on a page was marked
+                page = Math.min(page, Math.max(0, Math.ceil(unmarkedStudents.length / pageSize) - 1));
+                await r.answerCallbackQuery({ text: t(status === 'present' ? 'marked_present' : 'marked_absent', lang) });
             }
         }
     } while (cmd);
@@ -163,7 +201,7 @@ async function handleByGroup(
     if (gRes.callbackQuery) await gRes.answerCallbackQuery();
 
     if (!gCmd || gCmd === 'cancel') {
-        await cancelAndGreet(ctx, gRes);
+        await cancelAndGreet(ctx, gRes, 'operation_cancelled');
         return;
     }
 
