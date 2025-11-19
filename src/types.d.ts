@@ -2,7 +2,7 @@ import type { ConversationFlavor } from "@grammyjs/conversations";
 import type { SessionFlavor, Context } from "grammy";
 
 /* ---------- base context ---------- */
-export type MySession = { state?: string };
+export type MySession = { state?: string; language?: 'en' | 'ar' };
 export type BaseContext = Context & SessionFlavor<MySession>;
 export type MyContext = BaseContext & ConversationFlavor<BaseContext>;
 
@@ -20,6 +20,7 @@ export interface TextStep<K extends AnswerKey = AnswerKey> {
   type: "text";
   key: K; // stable identifier
   prompt: string;
+  promptParams?: Record<string, string>;
   validate?: (text: string) => Promisify<boolean>;
   error?: string;
   next: (value: string) => Promisify<Step | null>;
@@ -38,6 +39,7 @@ export interface ButtonStep<K extends AnswerKey = AnswerKey> {
   type: "button";
   key: K;
   prompt: string;
+  promptParams?: Record<string, string>;
   options: ButtonOption<K>[];
   onSelect?: (
     data: string,

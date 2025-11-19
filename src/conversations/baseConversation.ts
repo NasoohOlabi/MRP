@@ -9,6 +9,7 @@ import type {
   TreeConversationOptions,
 } from "../types";
 import { cancelAndGreet } from "../utils/greeting.js";
+import { t, getLang } from "../utils/i18n.js";
 
 interface InPlaceMeta {
   chatId: number;
@@ -27,12 +28,12 @@ export function createTreeConversation<S extends Step>(
 
       while (step) {
         if (step.type === "text") {
-          await ctx.reply(step.prompt);
+          await ctx.reply(t(step.prompt, getLang(ctx.session), step.promptParams));
           const res = await conv.wait();
           const text = res.message?.text;
 
           if (text && step.validate && !(await step.validate(text))) {
-            if (step.error) await ctx.reply(step.error);
+            if (step.error) await ctx.reply(t(step.error, getLang(ctx.session)));
             return; // early exit; consumer can retry by re-entering
           }
 
@@ -47,8 +48,8 @@ export function createTreeConversation<S extends Step>(
               continue;
             }
             opt.url
-              ? keyboard.url(opt.text, opt.url)
-              : keyboard.text(opt.text, opt.data);
+              ? keyboard.url(t(opt.text, getLang(ctx.session)), opt.url)
+              : keyboard.text(t(opt.text, getLang(ctx.session)), opt.data);
           }
 
           /* ---------- send or edit ---------- */
@@ -70,7 +71,7 @@ export function createTreeConversation<S extends Step>(
             }
           };
 
-          await sendOrEdit(step.prompt);
+          await sendOrEdit(t(step.prompt, getLang(ctx.session), step.promptParams));
 
           /* ---------- wait for click ---------- */
           const btnCtx = await conv.wait();
@@ -78,7 +79,7 @@ export function createTreeConversation<S extends Step>(
 
           if (!data) {
             if (btnCtx.callbackQuery) {
-              await btnCtx.answerCallbackQuery({ text: "Please select an option" });
+              await btnCtx.answerCallbackQuery({ text: t("please_select_option", getLang(ctx.session)) });
             }
             continue; // stay on same node
           }
@@ -89,7 +90,7 @@ export function createTreeConversation<S extends Step>(
             return;
           }
           const opt: ButtonOption<AnswerKey<string>> = step.options.find((o) => o.data === data)!;
-          await btnCtx.answerCallbackQuery({ text: `You selected ${opt.text}` });
+          await btnCtx.answerCallbackQuery({ text: `${t("you_selected", getLang(ctx.session))} ${t(opt.text, getLang(ctx.session))}` });
 
           if (step.onSelect) await step.onSelect(data, ctx, btnCtx);
 
@@ -112,12 +113,12 @@ export function createTreeConversation<S extends Step>(
       }
 
       /* ---------- finished ---------- */
-      await ctx.reply("Processing…");
+      await ctx.reply(t("processing", getLang(ctx.session)));
       await conv.external(() => opts.onSuccess(results));
-      await ctx.reply(opts.successMessage);
+      await ctx.reply(t(opts.successMessage, getLang(ctx.session)));
     } catch (err) {
       console.error("Tree conversation error:", err);
-      await ctx.reply(opts.failureMessage);
+      await ctx.reply(t(opts.failureMessage, getLang(ctx.session)));
     }
   };
 }

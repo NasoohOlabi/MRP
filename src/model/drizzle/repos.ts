@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import Fuse from 'fuse.js';
 import type { FuseResult } from 'fuse.js';
 import { db } from './db';
-import { attendance as attendanceTable, students as studentsTable, teachers as teachersTable } from './schema';
+import { attendance as attendanceTable, memorization as memorizationTable, students as studentsTable, teachers as teachersTable } from './schema';
 
 // Domain types expected by conversations (snake_case fields)
 export class Student {
@@ -10,8 +10,11 @@ export class Student {
 		public id: number,
 		public first_name: string,
 		public last_name: string,
-		public birth_date: string,
+		public birth_year: number,
 		public group: string,
+		public phone: string | null,
+		public father_phone: string | null,
+		public mother_phone: string | null,
 		public created_at: Date,
 		public updated_at: Date,
 	) { }
@@ -39,8 +42,17 @@ export class Attendance {
 	) { }
 }
 
+export class Memorization {
+	constructor(
+		public id: number,
+		public student_id: number,
+		public page: number,
+		public created_at: Date,
+		public updated_at: Date,
+	) { }
+}
+
 function toStudentDomain(row: typeof studentsTable.$inferSelect): Student {
-	// Validate expected non-null fields to satisfy lint and runtime safety
 	if (row.id == null || row.firstName == null || row.lastName == null || row.group == null || row.createdAt == null || row.updatedAt == null) {
 		throw new Error('Invalid student row: missing required fields');
 	}
@@ -48,16 +60,17 @@ function toStudentDomain(row: typeof studentsTable.$inferSelect): Student {
 		row.id,
 		row.firstName,
 		row.lastName,
-		// birthDate stored as Date -> YYYY-MM-DD string
-		row.birthDate && !isNaN(new Date(row.birthDate).getTime()) ? new Date(row.birthDate).toISOString().slice(0, 10) : '',
+		row.birthYear ?? 0,
 		row.group,
+		row.phone ?? null,
+		row.fatherPhone ?? null,
+		row.motherPhone ?? null,
 		new Date(row.createdAt),
 		new Date(row.updatedAt),
 	);
 }
 
 function toTeacherDomain(row: typeof teachersTable.$inferSelect): Teacher {
-	// Validate expected non-null fields to satisfy lint and runtime safety
 	if (row.id == null || row.firstName == null || row.lastName == null || row.phoneNumber == null || row.group == null || row.createdAt == null || row.updatedAt == null) {
 		throw new Error('Invalid teacher row: missing required fields');
 	}
@@ -73,7 +86,6 @@ function toTeacherDomain(row: typeof teachersTable.$inferSelect): Teacher {
 }
 
 function toAttendanceDomain(row: typeof attendanceTable.$inferSelect): Attendance {
-	// Validate expected non-null fields to satisfy lint and runtime safety
 	if (row.id == null || row.studentId == null || row.event == null || row.createdAt == null || row.updatedAt == null) {
 		throw new Error('Invalid attendance row: missing required fields');
 	}
@@ -81,6 +93,19 @@ function toAttendanceDomain(row: typeof attendanceTable.$inferSelect): Attendanc
 		row.id,
 		row.studentId,
 		row.event,
+		row.createdAt && !isNaN(new Date(row.createdAt).getTime()) ? new Date(row.createdAt) : new Date(),
+		row.updatedAt && !isNaN(new Date(row.updatedAt).getTime()) ? new Date(row.updatedAt) : new Date(),
+	);
+}
+
+function toMemorizationDomain(row: typeof memorizationTable.$inferSelect): Memorization {
+	if (row.id == null || row.studentId == null || row.page == null || row.createdAt == null || row.updatedAt == null) {
+		throw new Error('Invalid memorization row: missing required fields');
+	}
+	return new Memorization(
+		row.id,
+		row.studentId,
+		row.page,
 		row.createdAt && !isNaN(new Date(row.createdAt).getTime()) ? new Date(row.createdAt) : new Date(),
 		row.updatedAt && !isNaN(new Date(row.updatedAt).getTime()) ? new Date(row.updatedAt) : new Date(),
 	);
@@ -97,13 +122,15 @@ export class StudentRepo {
 		const insert = {
 			firstName: params.first_name,
 			lastName: params.last_name,
-			birthDate: params.birth_date ? new Date(params.birth_date) : now,
+			birthYear: params.birth_year,
 			group: params.group,
+			phone: params.phone,
+			fatherPhone: params.father_phone,
+			motherPhone: params.mother_phone,
 			createdAt: now,
 			updatedAt: now,
 		};
 		await db.insert(studentsTable).values(insert);
-		// Fetch last inserted row (SQLite specific)
 		const rows = await db.select().from(studentsTable).orderBy(studentsTable.id);
 		const created = rows[rows.length - 1];
 		return toStudentDomain(created);
@@ -116,12 +143,14 @@ export class StudentRepo {
 			.set({
 				firstName: student.first_name,
 				lastName: student.last_name,
-				birthDate: student.birth_date ? new Date(student.birth_date) : undefined,
+				birthYear: student.birth_year,
 				group: student.group,
+				phone: student.phone,
+				fatherPhone: student.father_phone,
+				motherPhone: student.mother_phone,
 				updatedAt: now,
 			})
 			.where(eq(studentsTable.id, student.id));
-		// Return the updated domain object
 		const [row] = await db.select().from(studentsTable).where(eq(studentsTable.id, student.id));
 		return toStudentDomain(row);
 	}
@@ -187,16 +216,16 @@ export class TeacherRepo {
 		return fuse.search(response);
 	}
 
-  public async teachersPhoneNumber(phone_number: string): Promise<boolean> {
-    const rows = await db.select().from(teachersTable).where(eq(teachersTable.phoneNumber, phone_number));
-    return rows.length > 0;
-  }
+	public async teachersPhoneNumber(phone_number: string): Promise<boolean> {
+		const rows = await db.select().from(teachersTable).where(eq(teachersTable.phoneNumber, phone_number));
+		return rows.length > 0;
+	}
 
-  public async findByPhone(phone_number: string): Promise<Teacher | null> {
-    const rows = await db.select().from(teachersTable).where(eq(teachersTable.phoneNumber, phone_number));
-    if (!rows.length) return null;
-    return toTeacherDomain(rows[0]);
-  }
+	public async findByPhone(phone_number: string): Promise<Teacher | null> {
+		const rows = await db.select().from(teachersTable).where(eq(teachersTable.phoneNumber, phone_number));
+		if (!rows.length) return null;
+		return toTeacherDomain(rows[0]);
+	}
 }
 
 export class AttendanceRepo {
@@ -238,22 +267,37 @@ export class AttendanceRepo {
 		return toAttendanceDomain(row);
 	}
 
-  public async delete(att: Attendance): Promise<{ success: boolean }> {
-    await db.delete(attendanceTable).where(eq(attendanceTable.id, att.id));
-    return { success: true };
-  }
+	public async delete(att: Attendance): Promise<{ success: boolean }> {
+		await db.delete(attendanceTable).where(eq(attendanceTable.id, att.id));
+		return { success: true };
+	}
 
-  public async hasAttended(studentId: number, eventName: string, date: Date): Promise<boolean> {
-    const rows = await db.select().from(attendanceTable).where(eq(attendanceTable.studentId, studentId));
-    return rows.some(r => r.createdAt != null && r.event === eventName && this.isSameDay(new Date(r.createdAt), date));
-  }
+	public async hasAttended(studentId: number, eventName: string, date: Date): Promise<boolean> {
+		const rows = await db.select().from(attendanceTable).where(eq(attendanceTable.studentId, studentId));
+		return rows.some(r => r.createdAt != null && r.event === eventName && this.isSameDay(new Date(r.createdAt), date));
+	}
 
-  public async deleteToday(studentId: number, eventName: string): Promise<{ success: boolean }> {
-    const today = new Date();
-    const rows = await db.select().from(attendanceTable).where(eq(attendanceTable.studentId, studentId));
-    const target = rows.find(r => r.id != null && r.createdAt != null && r.event === eventName && this.isSameDay(new Date(r.createdAt), today));
-    if (!target) return { success: false };
-    await db.delete(attendanceTable).where(eq(attendanceTable.id, target.id!));
-    return { success: true };
-  }
+	public async deleteToday(studentId: number, eventName: string): Promise<{ success: boolean }> {
+		const today = new Date();
+		const rows = await db.select().from(attendanceTable).where(eq(attendanceTable.studentId, studentId));
+		const target = rows.find(r => r.id != null && r.createdAt != null && r.event === eventName && this.isSameDay(new Date(r.createdAt), today));
+		if (!target) return { success: false };
+		await db.delete(attendanceTable).where(eq(attendanceTable.id, target.id!));
+		return { success: true };
+	}
+}
+
+export class MemorizationRepo {
+	public async create(params: Omit<Omit<Omit<Memorization, 'updated_at'>, 'created_at'>, 'id'>): Promise<Memorization> {
+		const now = new Date();
+		await db.insert(memorizationTable).values({
+			studentId: params.student_id,
+			page: params.page,
+			createdAt: now,
+			updatedAt: now,
+		});
+		const rows = await db.select().from(memorizationTable).orderBy(memorizationTable.id);
+		const created = rows[rows.length - 1];
+		return toMemorizationDomain(created);
+	}
 }

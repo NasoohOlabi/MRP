@@ -1,4 +1,5 @@
 import { StudentRepo } from '../../model/drizzle/repos';
+import type { AnswerKey } from '../../types';
 import { createTreeConversation } from '../baseConversation';
 import { createStep } from './flows/create';
 import { deleteStep } from './flows/delete';
@@ -7,34 +8,42 @@ import { updateStep } from './flows/update';
 export const studentCrudConversation = (repo: StudentRepo) => createTreeConversation({
 	entry: {
 		type: 'button',
-		prompt: "What operation would you like to perform?",
+		key: 'student_crud_entry' as AnswerKey,
+		prompt: "what_operation",
 		options: [
 			createStep,
 			updateStep(repo),
 			deleteStep(repo),
 			{
-				text: "Cancel",
+				text: "cancel",
 				data: "cancel",
 				next: null,
 			},
 		],
 		onSelect: async (data, ctx, res) => {
 			if (data === 'cancel') {
-				await res.editMessageText("Operation cancelled.");
+				await res.editMessageText("operation_cancelled");
 				return;
 			} else {
-				await res.editMessageText(`You selected ${data.toUpperCase()}`);
+				await res.editMessageText(`you_selected ${data.toUpperCase()}`);
 			}
 		},
 	},
 	onSuccess: async (results) => {
-		const op = results["What operation would you like to perform?"];
+		const op = results["what_operation"];
 		if (op === "create") {
+			const phone = results["enter_phone"]?.trim() || null;
+			const fatherPhone = results["enter_father_phone"]?.trim() || null;
+			const motherPhone = results["enter_mother_phone"]?.trim() || null;
+
 			return repo.create({
-				first_name: results["Enter first name:"],
-				last_name: results["Enter last name:"],
-				birth_date: results["Enter birth date (YYYY-MM-DD):"],
-				group: results["Enter group:"],
+				first_name: results["enter_first_name"],
+				last_name: results["enter_last_name"],
+				birth_year: parseInt(results["enter_birth_year"]),
+				group: results["enter_group"],
+				phone: phone,
+				father_phone: fatherPhone,
+				mother_phone: motherPhone,
 			});
 		} else if (op === "delete") {
 			// return repo.delete(results["Enter student ID to delete:"]);
@@ -44,8 +53,8 @@ export const studentCrudConversation = (repo: StudentRepo) => createTreeConversa
 
 		}
 	},
-	successMessage: "Operation completed successfully.",
-	failureMessage: "Something went wrong during the operation.",
+	successMessage: "operation_completed",
+	failureMessage: "operation_failed",
 });
 
 

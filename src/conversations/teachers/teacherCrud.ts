@@ -8,34 +8,34 @@ import { updateStep } from './flows/update';
 export const teacherCrudConversation = (repo: TeacherRepo) => createTreeConversation<string | null>({
 	entry: {
 		type: 'button',
-		prompt: "What operation would you like to perform?",
+		prompt: "what_operation",
 		options: [
 			createStep(repo),
 			updateStep(repo),
 			deleteStep(repo),
 			{
-				text: "Cancel",
+				text: "cancel",
 				data: "cancel",
 				next: null,
 			},
 		],
 		onSelect: async (data, ctx, res) => {
 			if (data === 'cancel') {
-				await res.editMessageText("Operation cancelled.");
+				await res.editMessageText("operation_cancelled");
 				throw new Error("User cancelled operation.");
 			} else {
-				await res.editMessageText(`You selected ${data.toUpperCase()}`);
+				await res.editMessageText(`you_selected ${data.toUpperCase()}`);
 			}
 		},
 	} as ButtonStep,
 	onSuccess: async (results) => {
-		const op = results["What operation would you like to perform?"];
+		const op = results["what_operation"];
 		if (op === "create") {
 			const newTeacherData = {
-				first_name: results["Enter first name:"],
-				last_name: results["Enter last name:"],
-				phone_number: results["Enter phone number:"],
-				group: results["Enter group:"],
+				first_name: results["enter_first_name"],
+				last_name: results["enter_last_name"],
+				phone_number: results["enter_phone"],
+				group: results["enter_group"],
 			};
 			const response = await repo.create(newTeacherData);
 			return JSON.stringify(response);
@@ -45,6 +45,6 @@ export const teacherCrudConversation = (repo: TeacherRepo) => createTreeConversa
 			return null;
 		}
 	},
-	successMessage: "Operation completed successfully.",
-	failureMessage: "Something went wrong during the operation.",
+	successMessage: "operation_completed",
+	failureMessage: "operation_failed",
 });
