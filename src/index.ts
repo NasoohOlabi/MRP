@@ -4,13 +4,14 @@ import {
 } from '@grammyjs/conversations';
 import dotenv from 'dotenv';
 import { Bot, session } from 'grammy';
-import { sendGreeting } from './utils/greeting.js';
-import { createBrowseConversation } from './conversations/browse/browseConversation.js';
-import { studentCrudConversation } from './conversations/students/studentCrud.js';
-import { teacherCrudConversation } from './conversations/teachers/teacherCrud.js';
-import { memorizationConversation } from './conversations/memorization/memorizationConversation.js';
 import { createAttendanceTakingConversation } from './conversations/attendance/attendanceTaking.js';
-import { StudentRepo, TeacherRepo, MemorizationRepo, AttendanceRepo } from './model/drizzle/repos.js';
+import { createBrowseConversation } from './conversations/browse/browseConversation.js';
+import { memorizationConversation } from './conversations/memorization/memorizationConversation.js';
+import { studentCrudConversation } from './conversations/students/studentCrud.js';
+import { createSummaryConversation } from './conversations/summaryConversation.js';
+import { teacherCrudConversation } from './conversations/teachers/teacherCrud.js';
+import { AttendanceRepo, MemorizationRepo, StudentRepo, TeacherRepo } from './model/drizzle/repos.js';
+import { sendGreeting } from './utils/greeting.js';
 
 import type { MyContext, MySession } from './types.js';
 
@@ -40,6 +41,7 @@ bot.use(createConversation(teacherCrudConversation(teacherRepo), 'createTeacherC
 bot.use(createConversation(createBrowseConversation(studentRepo, teacherRepo, true), 'browseStudentsConversation'));
 bot.use(createConversation(memorizationConversation(studentRepo, memorizationRepo), 'createMemorizationConversation'));
 bot.use(createConversation(createAttendanceTakingConversation(attendanceRepo, studentRepo), 'attendanceTakingConversation'));
+bot.use(createConversation(createSummaryConversation(attendanceRepo, studentRepo, memorizationRepo), 'summaryConversation'));
 
 // --- commands & handlers ---
 bot.command('start', async (ctx) => {
@@ -60,6 +62,9 @@ bot.command('memorize', async (ctx) => {
 bot.command('attendance', async (ctx) => {
 	await ctx.conversation.enter('attendanceTakingConversation');
 })
+bot.command('summary', async (ctx) => {
+	await ctx.conversation.enter('summaryConversation');
+})
 
 bot.on('message:text', async (ctx) => {
 	if (ctx.session.state === 'START') {
@@ -76,6 +81,8 @@ bot.on('message:text', async (ctx) => {
 			await ctx.conversation.enter('createMemorizationConversation');
 		} else if (ctx.message.text === '/attendance') {
 			await ctx.conversation.enter('attendanceTakingConversation');
+		} else if (ctx.message.text === '/summary') {
+			await ctx.conversation.enter('summaryConversation');
 		} else {
 			await ctx.reply(
 				"Sorry, I didn't understand. Please use one of the following commands:\n" +
@@ -83,7 +90,8 @@ bot.on('message:text', async (ctx) => {
 				"• /teacher – to interact with teacher records\n" +
 				"• /browse – to browse records\n" +
 				"• /memorize – to record student memorization\n" +
-				"• /attendance – to take attendance"
+				"• /attendance – to take attendance\n" +
+				"• /summary – to view attendance and memorization summaries"
 			);
 		}
 	}
