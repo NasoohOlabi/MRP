@@ -131,6 +131,17 @@ export class StudentRepo {
 		});
 		return fuse.search(query);
 	}
+
+	async findAllGroups(): Promise<string[]> {
+		const rows = await db.select({ group: studentsTable.group }).from(studentsTable);
+		const groups = new Set<string>();
+		for (const row of rows) {
+			if (row.group) {
+				groups.add(row.group);
+			}
+		}
+		return Array.from(groups).sort();
+	}
 }
 
 // Service layer for business logic
@@ -167,6 +178,10 @@ export class StudentService {
 
 	async search(query: string): Promise<FuseResult<Student>[]> {
 		return this.repo.search(query);
+	}
+
+	async getAllGroups(): Promise<string[]> {
+		return this.repo.findAllGroups();
 	}
 }
 

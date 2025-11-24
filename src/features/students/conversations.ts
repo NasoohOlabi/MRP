@@ -3,7 +3,7 @@ import type { Conversation } from '@grammyjs/conversations';
 import { InlineKeyboard } from 'grammy';
 import type { BaseContext, MyContext } from '../../types.js';
 import { t } from '../../utils/i18n.js';
-import { StudentService } from './model.js';
+import { StudentService, type Student } from './model.js';
 
 const studentService = new StudentService();
 
@@ -203,41 +203,203 @@ async function updateStudentConversation(conversation: Conversation<BaseContext,
 	}
 
 	const studentId = parseInt(selectedData.replace('student_', ''));
-	const student = await studentService.getById(studentId);
+	let student = await studentService.getById(studentId);
 
 	if (!student) {
 		await ctx.reply(t('operation_failed', lang));
 		return;
 	}
 
-	// Ask what to update
-	await ctx.reply('Enter new first name (or send "-" to keep current):');
-	response = await conversation.wait();
-	const newFirstName = response.message?.text?.trim();
-	const firstName = newFirstName && newFirstName !== '-' ? newFirstName : student.firstName;
+	// Keep track of updates
+	const updates: Partial<Student> = {};
 
-	await ctx.reply('Enter new last name (or send "-" to keep current):');
-	response = await conversation.wait();
-	const newLastName = response.message?.text?.trim();
-	const lastName = newLastName && newLastName !== '-' ? newLastName : student.lastName;
+	// Field selection loop
+	while (true) {
+		// Show current student info and field selection menu
+		const currentInfo = `
+**Current Student Information:**
+Name: ${student.firstName} ${student.lastName}
+Group: ${student.group || 'None'}
+Phone: ${student.phone || 'None'}
+Father's Phone: ${student.fatherPhone || 'None'}
+Mother's Phone: ${student.motherPhone || 'None'}
 
-	await ctx.reply('Enter new group (or send "-" to keep current, or send empty to remove):');
-	response = await conversation.wait();
-	const newGroup = response.message?.text?.trim();
-	const group = newGroup === '-' ? student.group : (newGroup || null);
+Select a field to update:
+		`.trim();
 
-	// Save updates
-	await ctx.reply(t('processing', lang));
-	try {
-		await studentService.update({
-			...student,
-			firstName,
-			lastName,
-			group,
-		});
-		await ctx.reply(t('operation_completed', lang));
-	} catch (err) {
-		await ctx.reply(t('operation_failed', lang));
+		const fieldKeyboard = new InlineKeyboard()
+			.text('First Name', 'field_firstName').row()
+			.text('Last Name', 'field_lastName').row()
+			.text('Group', 'field_group').row()
+			.text('Phone', 'field_phone').row()
+			.text("Father's Phone", 'field_fatherPhone').row()
+			.text("Mother's Phone", 'field_motherPhone').row()
+			.text('Finish & Save', 'field_finish').row()
+			.text(t('cancel', lang), 'field_cancel');
+
+		await ctx.reply(currentInfo, { parse_mode: 'Markdown', reply_markup: fieldKeyboard });
+
+		const fieldCtx = await conversation.wait();
+		const fieldAction = fieldCtx.callbackQuery?.data;
+
+		if (!fieldAction) {
+			await ctx.reply(t('operation_failed', lang));
+			return;
+		}
+
+		await fieldCtx.answerCallbackQuery();
+
+		// Delete field selection menu
+		if (fieldCtx.callbackQuery?.message) {
+			try {
+				await ctx.api.deleteMessage(
+					fieldCtx.callbackQuery.message.chat.id,
+					fieldCtx.callbackQuery.message.message_id
+				);
+			} catch (err) {
+				// Ignore
+			}
+		}
+
+		if (fieldAction === 'field_cancel') {
+			await ctx.reply(t('operation_cancelled', lang));
+			return;
+		}
+
+		if (fieldAction === 'field_finish') {
+			// Save all updates
+			await ctx.reply(t('processing', lang));
+			try {
+				await studentService.update({
+					...student,
+					...updates,
+				});
+				await ctx.reply(t('operation_completed', lang));
+				return;
+			} catch (err) {
+				await ctx.reply(t('operation_failed', lang));
+				return;
+			}
+		}
+
+		// Handle field updates
+		if (fieldAction === 'field_firstName') {
+			await ctx.reply(`Enter new first name (current: ${student.firstName}):`);
+			response = await conversation.wait();
+			const newValue = response.message?.text?.trim();
+			if (newValue) {
+				updates.firstName = newValue;
+				student = { ...student, firstName: newValue };
+				await ctx.reply('First name updated!');
+			}
+		} else if (fieldAction === 'field_lastName') {
+			await ctx.reply(`Enter new last name (current: ${student.lastName}):`);
+			response = await conversation.wait();
+			const newValue = response.message?.text?.trim();
+			if (newValue) {
+				updates.lastName = newValue;
+				student = { ...student, lastName: newValue };
+				await ctx.reply('Last name updated!');
+			}
+		} else if (fieldAction === 'field_group') {
+			// Get all existing groups
+			const groups = await studentService.getAllGroups();
+
+			const groupKeyboard = new InlineKeyboard();
+
+			// Add existing groups as buttons
+			if (groups.length > 0) {
+				for (const group of groups.slice(0, 10)) {
+					// Truncate group name if too long for callback data (64 byte limit)
+					const callbackData = `group_${group}`;
+					if (callbackData.length <= 64) {
+						groupKeyboard.text(group, callbackData).row();
+					}
+				}
+			}
+
+			// Add option to remove group (only if student has a group)
+			if (student.group) {
+				groupKeyboard.text('Remove Group', 'group_remove').row();
+			}
+			groupKeyboard.text(t('cancel', lang), 'group_cancel');
+
+			const groupMessage = groups.length === 0
+				? `No groups available. Current group: ${student.group || 'None'}`
+				: `Select a group (current: ${student.group || 'None'}):`;
+
+			await ctx.reply(groupMessage, { reply_markup: groupKeyboard });
+
+			const groupCtx = await conversation.wait();
+			const groupAction = groupCtx.callbackQuery?.data;
+
+			await groupCtx.answerCallbackQuery();
+
+			// Delete group selection menu
+			if (groupCtx.callbackQuery?.message) {
+				try {
+					await ctx.api.deleteMessage(
+						groupCtx.callbackQuery.message.chat.id,
+						groupCtx.callbackQuery.message.message_id
+					);
+				} catch (err) {
+					// Ignore
+				}
+			}
+
+			if (groupAction && groupAction.startsWith('group_')) {
+				if (groupAction === 'group_remove') {
+					updates.group = null;
+					student = { ...student, group: null };
+					await ctx.reply('Group removed!');
+				} else if (groupAction !== 'group_cancel') {
+					// Extract group name by removing the 'group_' prefix (6 characters)
+					const selectedGroup = groupAction.substring(6);
+					updates.group = selectedGroup;
+					student = { ...student, group: selectedGroup };
+					await ctx.reply(`Group updated to: ${selectedGroup}`);
+				}
+			}
+		} else if (fieldAction === 'field_phone') {
+			await ctx.reply(`Enter new phone (current: ${student.phone || 'None'}, or send "-" to remove):`);
+			response = await conversation.wait();
+			const newValue = response.message?.text?.trim();
+			if (newValue === '-') {
+				updates.phone = null;
+				student = { ...student, phone: null };
+				await ctx.reply('Phone removed!');
+			} else if (newValue) {
+				updates.phone = newValue;
+				student = { ...student, phone: newValue };
+				await ctx.reply('Phone updated!');
+			}
+		} else if (fieldAction === 'field_fatherPhone') {
+			await ctx.reply(`Enter new father's phone (current: ${student.fatherPhone || 'None'}, or send "-" to remove):`);
+			response = await conversation.wait();
+			const newValue = response.message?.text?.trim();
+			if (newValue === '-') {
+				updates.fatherPhone = null;
+				student = { ...student, fatherPhone: null };
+				await ctx.reply("Father's phone removed!");
+			} else if (newValue) {
+				updates.fatherPhone = newValue;
+				student = { ...student, fatherPhone: newValue };
+				await ctx.reply("Father's phone updated!");
+			}
+		} else if (fieldAction === 'field_motherPhone') {
+			await ctx.reply(`Enter new mother's phone (current: ${student.motherPhone || 'None'}, or send "-" to remove):`);
+			response = await conversation.wait();
+			const newValue = response.message?.text?.trim();
+			if (newValue === '-') {
+				updates.motherPhone = null;
+				student = { ...student, motherPhone: null };
+				await ctx.reply("Mother's phone removed!");
+			} else if (newValue) {
+				updates.motherPhone = newValue;
+				student = { ...student, motherPhone: newValue };
+				await ctx.reply("Mother's phone updated!");
+			}
+		}
 	}
 }
 
