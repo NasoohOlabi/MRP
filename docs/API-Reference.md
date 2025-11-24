@@ -416,3 +416,4 @@ Conversations handle errors internally and show failure messages to users. Error
 5. **Validate input**: Validate before calling repository methods
 6. **Use i18n**: Always use translation keys, not hardcoded strings
 
+

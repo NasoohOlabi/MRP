@@ -3,7 +3,9 @@ import { t, getLang } from "./i18n.js";
 
 export async function sendGreeting(ctx: MyContext) {
   await ctx.reply(t("greeting", getLang(ctx.session)));
-  ctx.session.state = "START";
+  if (ctx.session) {
+    ctx.session.state = "START";
+  }
 }
 
 export async function deleteCallbackMessage(btnCtx?: MyContext) {
@@ -16,17 +18,8 @@ export async function cancelAndGreet(ctx: MyContext, btnCtx?: MyContext, summary
   try {
     await deleteCallbackMessage(btnCtx);
   } catch { }
-  try {
-    const lang = getLang(ctx.session);
-    await ctx.reply(t(summaryText || 'operation_cancelled', lang));
-    await sendGreeting(ctx);
-  } catch (err) {
-    // If sending messages fails, try to at least send greeting
-    try {
-      await sendGreeting(ctx);
-    } catch {
-      // If even greeting fails, rethrow the original error
-      throw err;
-    }
-  }
+  
+  const lang = getLang(ctx.session);
+  await ctx.reply(t(summaryText || 'operation_cancelled', lang));
+  await sendGreeting(ctx);
 }

@@ -514,8 +514,9 @@ export function createTreeConversation<Shape = Record<string, string>>(
           chatId,
           targetConversation: onSuccessResult.exitAndEnter
         });
-        // Exit current conversation and enter the new one using conv context
-        await conv.external(() => ctx.conversation.enter(onSuccessResult.exitAndEnter as string));
+        // Exit current conversation and enter the new one
+        await conv.skip();
+        await ctx.conversation.enter(onSuccessResult.exitAndEnter as string);
         return;
       }
 

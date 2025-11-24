@@ -30,7 +30,7 @@ export const createViewConversation = (studentRepo: StudentRepo, memorizationRep
 			inPlace = { chatId: sent.chat.id, messageId: sent.message_id };
 		};
 
-		// Step 1: Select student
+		// Step 1: Get search query and show student selection
 		await ctx.reply(t('enter_student_name', lang));
 		const nameRes = await conv.wait();
 		const studentName = nameRes.message?.text?.trim();
@@ -41,7 +41,7 @@ export const createViewConversation = (studentRepo: StudentRepo, memorizationRep
 			return;
 		}
 
-		// Search for student
+		// Search for students
 		const searchResults = await studentRepo.lookFor(studentName);
 		logger.info('viewStudentInfoConversation: Student search completed', {
 			userId,
@@ -55,43 +55,70 @@ export const createViewConversation = (studentRepo: StudentRepo, memorizationRep
 			return;
 		}
 
-		// If only one result, use it directly; otherwise show selection
-		let selectedStudent: Student;
-		if (searchResults.length === 1) {
-			const firstResult = searchResults[0];
-			if (!firstResult?.item) {
-				logger.info('viewStudentInfoConversation: Invalid search result, cancelling', { userId, chatId });
+		// Step 2: Show paginated student selection
+		const STUDENT_PAGE_SIZE = 4;
+		let studentPage = 0;
+		let selectedStudent: Student | null = null;
+
+		while (!selectedStudent) {
+			const startIndex = studentPage * STUDENT_PAGE_SIZE;
+			const endIndex = startIndex + STUDENT_PAGE_SIZE;
+			const studentsOnPage = searchResults.slice(startIndex, endIndex);
+			const totalPages = Math.ceil(searchResults.length / STUDENT_PAGE_SIZE);
+
+			if (studentsOnPage.length === 0) {
+				logger.info('viewStudentInfoConversation: No students on page, cancelling', { userId, chatId, page: studentPage });
 				await ctx.reply(t('no_results', lang));
 				return;
 			}
-			selectedStudent = firstResult.item;
-			logger.info('viewStudentInfoConversation: Single student found, auto-selected', {
-				userId,
-				chatId,
-				studentId: selectedStudent.id,
-				studentName: `${selectedStudent.first_name} ${selectedStudent.last_name}`
-			});
-		} else {
-			// Show selection menu for multiple results
+
+			// Build selection keyboard: 2x2 grid, then pagination, then cancel
 			const selectKb = new InlineKeyboard();
-			const maxShow = Math.min(searchResults.length, 10);
-			for (let i = 0; i < maxShow; i++) {
-				const s = searchResults[i]?.item;
+
+			// First row (up to 2 students)
+			for (let i = 0; i < Math.min(2, studentsOnPage.length); i++) {
+				const s = studentsOnPage[i]?.item;
 				if (!s) continue;
-				selectKb.text(`${s.first_name} ${s.last_name}`, `select_${i}`);
-				if ((i + 1) % 2 === 0) selectKb.row();
+				selectKb.text(`${s.first_name} ${s.last_name}`, `select_${startIndex + i}`);
 			}
-			if (maxShow % 2 === 1) selectKb.row();
+			selectKb.row();
+
+			// Second row (next up to 2 students)
+			for (let i = 2; i < Math.min(4, studentsOnPage.length); i++) {
+				const s = studentsOnPage[i]?.item;
+				if (!s) continue;
+				selectKb.text(`${s.first_name} ${s.last_name}`, `select_${startIndex + i}`);
+			}
+			selectKb.row();
+
+			// Pagination row
+			if (studentPage > 0) {
+				selectKb.text(t('previous', lang), `page_${studentPage - 1}`);
+			}
+			if (studentPage < totalPages - 1) {
+				selectKb.text(t('next', lang), `page_${studentPage + 1}`);
+			}
+			if (studentPage > 0 || studentPage < totalPages - 1) {
+				selectKb.row();
+			}
+
+			// Cancel button
 			selectKb.text(t('cancel', lang), 'cancel');
 
-			await sendOrEdit(t('select_student', lang), selectKb);
+			await sendOrEdit(
+				t('select_student', lang) + (totalPages > 1 ? ` (${t('page', lang)} ${studentPage + 1}/${totalPages})` : ''),
+				selectKb
+			);
+
 			const selectionRes = await conv.wait();
 			const callbackData = selectionRes.callbackQuery?.data;
 			if (selectionRes.callbackQuery) await selectionRes.answerCallbackQuery();
+
 			if (!callbackData || callbackData === 'cancel') {
 				await cancelAndGreet(ctx, selectionRes);
 				return;
 			}
+
 			if (callbackData.startsWith('select_')) {
 				const indexStr = callbackData.split('_')[1];
 				if (!indexStr) {
@@ -107,13 +134,22 @@ export const createViewConversation = (studentRepo: StudentRepo, memorizationRep
 					return;
 				}
 				selectedStudent = selectedResult.item;
-				logger.info('viewStudentInfoConversation: Student selected from multiple results', {
+				logger.info('viewStudentInfoConversation: Student selected', {
 					userId,
 					chatId,
 					studentId: selectedStudent.id,
 					studentName: `${selectedStudent.first_name} ${selectedStudent.last_name}`,
 					selectedIndex: index
 				});
+			} else if (callbackData.startsWith('page_')) {
+				const pageStr = callbackData.split('_')[1];
+				if (pageStr) {
+					const newPage = parseInt(pageStr);
+					if (!isNaN(newPage) && newPage >= 0 && newPage < totalPages) {
+						studentPage = newPage;
+						inPlace = null; // Reset inPlace to allow editing
+					}
+				}
 			} else {
 				logger.info('viewStudentInfoConversation: Invalid selection, cancelling', { userId, chatId, callbackData });
 				await cancelAndGreet(ctx, selectionRes);
@@ -121,7 +157,12 @@ export const createViewConversation = (studentRepo: StudentRepo, memorizationRep
 			}
 		}
 
-		// Step 2: Choose what to view
+		if (!selectedStudent) {
+			logger.info('viewStudentInfoConversation: No student selected, cancelling', { userId, chatId });
+			return;
+		}
+
+		// Step 2: Choose what to view (attendance or memorization)
 		const infoKb = new InlineKeyboard();
 		infoKb.text(t('view_memorizations', lang), 'memorizations');
 		infoKb.text(t('view_attendance', lang), 'attendance');

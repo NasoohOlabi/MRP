@@ -133,3 +133,18 @@
   "totalDurationMs": 609
 }
 
+{
+  "timestamp": "2025-11-24T18:38:27.408Z",
+  "userId": 8194513527,
+  "chatId": 8194513527,
+  "error": "undefined is not an object (evaluating 'ctx.conversation.enter')",
+  "errorStack": "TypeError: undefined is not an object (evaluating 'ctx.conversation.enter')\n    at <anonymous> (D:\\Masjid\\MRP\\src\\conversations\\baseConversation.ts:518:39)\n    at <anonymous> (D:\\Masjid\\MRP\\node_modules\\@grammyjs\\conversations\\out\\conversation.js:676:40)\n    at action (D:\\Masjid\\MRP\\node_modules\\@grammyjs\\conversations\\out\\conversation.js:673:36)\n    at <anonymous> (D:\\Masjid\\MRP\\node_modules\\@grammyjs\\conversations\\out\\engine.js:194:31)\n    at <anonymous> (D:\\Masjid\\MRP\\node_modules\\@grammyjs\\conversations\\out\\engine.js:192:46)\n    at done (D:\\Masjid\\MRP\\node_modules\\@grammyjs\\conversations\\out\\state.js:116:26)\n    at done (D:\\Masjid\\MRP\\node_modules\\@grammyjs\\conversations\\out\\state.js:96:29)\n    at perform (D:\\Masjid\\MRP\\node_modules\\@grammyjs\\conversations\\out\\state.js:125:22)\n    at perform (D:\\Masjid\\MRP\\node_modules\\@grammyjs\\conversations\\out\\state.js:123:28)\n    at action (D:\\Masjid\\MRP\\node_modules\\@grammyjs\\conversations\\out\\engine.js:192:31)",
+  "results": [
+    "what_operation"
+  ],
+  "resultsData": {
+    "what_operation": "view_info"
+  },
+  "totalDurationMs": 544
+}
+
