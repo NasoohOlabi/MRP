@@ -1,7 +1,7 @@
 import type { ConversationFlavor } from "@grammyjs/conversations";
 import type { SessionFlavor, Context } from "grammy";
 
-import type { ChatMessage } from './utils/lmStudio.js';
+import type { ChatMessage } from './app/telegram/utils/lmStudio.js';
 
 /* ---------- base context ---------- */
 export type MySession = { 

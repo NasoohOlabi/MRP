@@ -74,7 +74,7 @@ export const createSummaryConversation = (attRepo: AttendanceRepo, studentRepo: 
     let view = filteredAttendance.map(a => byId.get(a.student_id)).filter(Boolean) as Student[];
 
     if (gCmd.startsWith('group:')) {
-      const g = gCmd.split(':')[1];
+      const g = gCmd.split(':')[1] || '';
       logger.info('Filtering attendance summary by group', { userId, chatId, event, group: g });
       view = view.filter(s => s.group === g);
     }
@@ -86,7 +86,7 @@ export const createSummaryConversation = (attRepo: AttendanceRepo, studentRepo: 
       userId,
       chatId,
       event,
-      group: gCmd.startsWith('group:') ? gCmd.split(':')[1] : 'all',
+      group: gCmd.startsWith('group:') ? (gCmd.split(':')[1] || '') : 'all',
       studentCount: view.length,
       durationMs: summaryDuration
     });
@@ -101,7 +101,7 @@ export const createSummaryConversation = (attRepo: AttendanceRepo, studentRepo: 
     const gCmd = gRes.callbackQuery?.data;
     if (gRes.callbackQuery) await gRes.answerCallbackQuery();
     if (!gCmd || gCmd === 'cancel') { await cancelAndGreet(ctx, gRes); return; }
-    const group = gCmd.split(':')[1];
+    const group = gCmd.split(':')[1] || '';
     const studentsInGroup = allStudents.filter(s => s.group === group);
 
     let page = 0;
@@ -125,7 +125,7 @@ export const createSummaryConversation = (attRepo: AttendanceRepo, studentRepo: 
       if (cmd === 'next') page = Math.min(page + 1, totalPages - 1);
       if (cmd === 'previous') page = Math.max(page - 1, 0);
       if (cmd.startsWith('student:')) {
-        const studentId = parseInt(cmd.split(':')[1], 10);
+        const studentId = parseInt(cmd.split(':')[1] || '0', 10);
         const student = allStudents.find(s => s.id === studentId);
         if (!student) {
           logger.warn('Memorization summary: Student not found', { userId, chatId, studentId });

@@ -1,1 +1,1 @@
-{"dialect": "sqlite","schema": "./src/model/drizzle/schema.ts","dbCredentials": {"url": "./data.db"}}
+{"dialect": "sqlite","schema": "./src/infrastructure/db/schema.ts","dbCredentials": {"url": "./data.db"}}

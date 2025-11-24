@@ -61,10 +61,10 @@ export const studentCrudConversation = (repo: StudentRepo, memorizationRepo: Mem
 			const motherPhone = results["enter_mother_phone"]?.trim() || null;
 
 			return repo.create({
-				first_name: results["enter_first_name"],
-				last_name: results["enter_last_name"],
-				birth_year: parseInt(results["enter_birth_year"]),
-				group: results["enter_group"],
+				first_name: results["enter_first_name"]!,
+				last_name: results["enter_last_name"]!,
+				birth_year: parseInt(results["enter_birth_year"]!),
+				group: results["enter_group"]!,
 				phone: phone,
 				father_phone: fatherPhone,
 				mother_phone: motherPhone,

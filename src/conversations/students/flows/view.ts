@@ -58,7 +58,13 @@ export const createViewConversation = (studentRepo: StudentRepo, memorizationRep
 		// If only one result, use it directly; otherwise show selection
 		let selectedStudent: Student;
 		if (searchResults.length === 1) {
-			selectedStudent = searchResults[0].item;
+			const firstResult = searchResults[0];
+			if (!firstResult?.item) {
+				logger.info('viewStudentInfoConversation: Invalid search result, cancelling', { userId, chatId });
+				await ctx.reply(t('no_results', lang));
+				return;
+			}
+			selectedStudent = firstResult.item;
 			logger.info('viewStudentInfoConversation: Single student found, auto-selected', {
 				userId,
 				chatId,
@@ -70,7 +76,8 @@ export const createViewConversation = (studentRepo: StudentRepo, memorizationRep
 			const selectKb = new InlineKeyboard();
 			const maxShow = Math.min(searchResults.length, 10);
 			for (let i = 0; i < maxShow; i++) {
-				const s = searchResults[i].item;
+				const s = searchResults[i]?.item;
+				if (!s) continue;
 				selectKb.text(`${s.first_name} ${s.last_name}`, `select_${i}`);
 				if ((i + 1) % 2 === 0) selectKb.row();
 			}
@@ -86,8 +93,20 @@ export const createViewConversation = (studentRepo: StudentRepo, memorizationRep
 				return;
 			}
 			if (callbackData.startsWith('select_')) {
-				const index = parseInt(callbackData.split('_')[1]);
-				selectedStudent = searchResults[index].item;
+				const indexStr = callbackData.split('_')[1];
+				if (!indexStr) {
+					logger.info('viewStudentInfoConversation: Invalid selection index, cancelling', { userId, chatId, callbackData });
+					await cancelAndGreet(ctx, selectionRes);
+					return;
+				}
+				const index = parseInt(indexStr);
+				const selectedResult = searchResults[index];
+				if (!selectedResult?.item || isNaN(index) || index < 0 || index >= searchResults.length) {
+					logger.info('viewStudentInfoConversation: Invalid selection index, cancelling', { userId, chatId, callbackData, index });
+					await cancelAndGreet(ctx, selectionRes);
+					return;
+				}
+				selectedStudent = selectedResult.item;
 				logger.info('viewStudentInfoConversation: Student selected from multiple results', {
 					userId,
 					chatId,
@@ -225,8 +244,8 @@ export const createViewConversation = (studentRepo: StudentRepo, memorizationRep
 
 			if (infoType === 'memorizations') {
 				const result = await memorizationRepo.readByStudentIdPaginated(selectedStudent.id, {
-					fromDate,
-					toDate,
+					...(fromDate !== undefined && { fromDate }),
+					...(toDate !== undefined && { toDate }),
 					limit: PAGE_SIZE,
 					offset,
 				});
@@ -243,8 +262,8 @@ export const createViewConversation = (studentRepo: StudentRepo, memorizationRep
 				});
 			} else {
 				const result = await attendanceRepo.readByStudentId(selectedStudent.id, {
-					fromDate,
-					toDate,
+					...(fromDate !== undefined && { fromDate }),
+					...(toDate !== undefined && { toDate }),
 					limit: PAGE_SIZE,
 					offset,
 				});
@@ -374,7 +393,7 @@ function parseDate(dateStr: string): Date | null {
 
 	for (const format of formats) {
 		const match = dateStr.match(format);
-		if (match) {
+		if (match && match[1] && match[2] && match[3]) {
 			if (format === formats[0]) {
 				// YYYY-MM-DD
 				return new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));

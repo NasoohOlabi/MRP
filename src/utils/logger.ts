@@ -3,11 +3,11 @@ import { mkdir } from 'fs/promises';
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 
-const logLevel = process.env.LOG_LEVEL || 'info';
+const logLevel = process.env['LOG_LEVEL'] || 'info';
 
 // Format that adds logType metadata to distinguish log sources
 const addLogTypeFormat = (logType: string) => winston.format((info) => {
-	info.logType = logType;
+	info['logType'] = logType;
 	return info;
 })();
 

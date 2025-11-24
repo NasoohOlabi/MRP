@@ -5,8 +5,10 @@ import type {
   AnswerKey,
   BaseContext,
   ButtonOption,
+  ButtonStep,
   MyContext,
   Step,
+  TextStep,
   TreeConversationOptions
 } from "../types";
 import { cancelAndGreet, sendGreeting } from "../utils/greeting.js";
@@ -74,26 +76,32 @@ export class ConversationBuilder<Shape extends Record<string, any> = Record<stri
       next?: Step | ((val: string) => Promise<Step | null> | Step | null);
     } = {}
   ): this {
-    this.steps.push((nextChain) => ({
-      type: "text",
-      key: key as unknown as AnswerKey,
-      prompt,
-      promptParams: options.promptParams,
-      validate: options.validate,
-      error: options.error,
-      next: async (val) => {
-        if (options.action) await options.action(val);
+    this.steps.push((nextChain) => {
+      const step: TextStep = {
+        type: "text",
+        key: key as unknown as AnswerKey,
+        prompt,
+        next: async (val) => {
+          if (options.action) await options.action(val);
 
-        if (options.next) {
-          if (typeof options.next === 'function') {
-            return options.next(val);
+          if (options.next) {
+            if (typeof options.next === 'function') {
+              return options.next(val);
+            }
+            return options.next;
           }
-          return options.next;
-        }
 
-        return nextChain;
-      },
-    }));
+          return nextChain;
+        },
+      };
+
+      // Only add optional properties if they're defined
+      if (options.promptParams !== undefined) step.promptParams = options.promptParams;
+      if (options.validate !== undefined) step.validate = options.validate;
+      if (options.error !== undefined) step.error = options.error;
+
+      return step;
+    });
     return this;
   }
 
@@ -155,23 +163,31 @@ export class ConversationBuilder<Shape extends Record<string, any> = Record<stri
           nextStep = nextChain;
         }
 
-        return {
+        const option: ButtonOption = {
           text: b.text,
           data: b.data,
-          url: b.url,
           next: nextStep,
         };
+
+        // Only add url if it's defined
+        if (b.url !== undefined) option.url = b.url;
+
+        return option;
       });
 
-      return {
+      const step: ButtonStep = {
         type: "button",
         key: key as unknown as AnswerKey,
         prompt,
-        promptParams: options.promptParams,
         options: builtOptions,
-        inPlace: options.inPlace,
-        onSelect: options.onSelect ? (d, c, bc) => options.onSelect!(d, c, bc) : undefined,
       };
+
+      // Only add optional properties if they're defined
+      if (options.promptParams !== undefined) step.promptParams = options.promptParams;
+      if (options.inPlace !== undefined) step.inPlace = options.inPlace;
+      if (options.onSelect !== undefined) step.onSelect = options.onSelect;
+
+      return step;
     });
     return this;
   }
@@ -211,7 +227,9 @@ export class ConversationBuilder<Shape extends Record<string, any> = Record<stri
   compile(next: Step | null = null): Step {
     let current: Step | null = next;
     for (let i = this.steps.length - 1; i >= 0; i--) {
-      current = this.steps[i](current);
+      const stepFn = this.steps[i];
+      if (!stepFn) continue; // Should never happen, but TypeScript needs this check
+      current = stepFn(current);
     }
     if (!current) throw new Error("ConversationBuilder cannot be empty");
     return current;
