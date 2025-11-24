@@ -41,6 +41,10 @@ export const ar = {
 
     // Attendance
     attendance_method: "كيف تريد تسجيل الحضور؟",
+    attendance_menu: "ماذا تريد أن تفعل؟",
+    mark_attendance: "تسجيل الحضور",
+    browse_by_event: "تصفح حسب الحدث",
+    browse_by_student: "تصفح حسب الطالب",
     by_group: "حسب المجموعة",
     all_students: "جميع الطلاب",
     by_first_name: "حسب الاسم الأول",

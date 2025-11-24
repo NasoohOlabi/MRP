@@ -44,7 +44,7 @@ export async function memorizationConversation(conversation: Conversation<BaseCo
 	for (const result of results.slice(0, 10)) {
 		const student = result.item;
 		keyboard.text(
-			`${student.firstName} ${student.lastName} (${student.group})`,
+			`${student.firstName} ${student.lastName}${student.group ? ` (${student.group})` : ''}`,
 			`student_${student.id}`
 		).row();
 	}

@@ -127,6 +127,50 @@ export class AttendanceRepo {
 		await db.delete(attendanceTable).where(eq(attendanceTable.id, target.id));
 		return true;
 	}
+
+	async findByEvent(
+		event: string,
+		options?: {
+			fromDate?: Date;
+			toDate?: Date;
+			limit?: number;
+			offset?: number;
+		}
+	): Promise<{ records: Attendance[]; total: number }> {
+		const conditions = [eq(attendanceTable.event, event)];
+		if (options?.fromDate) {
+			conditions.push(gte(attendanceTable.createdAt, options.fromDate));
+		}
+		if (options?.toDate) {
+			conditions.push(lte(attendanceTable.createdAt, options.toDate));
+		}
+
+		const whereClause = conditions.length > 1 ? and(...conditions) : conditions[0];
+
+		// Get total count
+		const allRows = await db.select().from(attendanceTable).where(whereClause);
+		const total = allRows.length;
+
+		// Get paginated results
+		let queryBuilder = db
+			.select()
+			.from(attendanceTable)
+			.where(whereClause)
+			.orderBy(desc(attendanceTable.createdAt));
+
+		if (options?.limit !== undefined && options?.offset !== undefined) {
+			queryBuilder = queryBuilder.limit(options.limit).offset(options.offset) as typeof queryBuilder;
+		} else if (options?.limit !== undefined) {
+			queryBuilder = queryBuilder.limit(options.limit) as typeof queryBuilder;
+		} else if (options?.offset !== undefined) {
+			queryBuilder = queryBuilder.offset(options.offset) as typeof queryBuilder;
+		}
+
+		const rows = await queryBuilder;
+		const records = rows.map(toDomain);
+
+		return { records, total };
+	}
 }
 
 // Service layer for business logic
@@ -155,6 +199,18 @@ export class AttendanceService {
 		}
 	): Promise<{ records: Attendance[]; total: number }> {
 		return this.repo.findByStudentId(studentId, options);
+	}
+
+	async getEventAttendance(
+		event: string,
+		options?: {
+			fromDate?: Date;
+			toDate?: Date;
+			limit?: number;
+			offset?: number;
+		}
+	): Promise<{ records: Attendance[]; total: number }> {
+		return this.repo.findByEvent(event, options);
 	}
 }
 

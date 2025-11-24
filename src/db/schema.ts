@@ -11,7 +11,7 @@ export const students = sqliteTable('students', {
 	phone: text('phone', { length: 20 }),
 	fatherPhone: text('father_phone', { length: 20 }),
 	motherPhone: text('mother_phone', { length: 20 }),
-	group: text('group', { length: 100 }).notNull(),
+	group: text('group', { length: 100 }),
 	createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(strftime('%s', 'now'))`),
 	updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(strftime('%s', 'now'))`),
 });

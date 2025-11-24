@@ -58,14 +58,14 @@ async function importStudents() {
                     firstName: firstName.trim(),
                     lastName: lastName.trim(),
                     birthYear: birthYearNum,
-                    group: group.trim(),
+                    group: group?.trim() || null,
                     phone: null, // Not in CSV
                     fatherPhone: cleanFatherPhone,
                     motherPhone: cleanMotherPhone,
                 });
 
                 imported++;
-                console.log(`✅ Imported: ${firstName.trim()} ${lastName.trim()} (${group.trim()})`);
+                console.log(`✅ Imported: ${firstName.trim()} ${lastName.trim()}${group?.trim() ? ` (${group.trim()})` : ''}`);
             } catch (error) {
                 console.error(`❌ Error importing ${firstName} ${lastName}:`, error);
                 skipped++;

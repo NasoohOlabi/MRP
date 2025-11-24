@@ -11,7 +11,7 @@ export interface Student {
 	firstName: string;
 	lastName: string;
 	birthYear: number;
-	group: string;
+	group: string | null;
 	phone: string | null;
 	fatherPhone: string | null;
 	motherPhone: string | null;
@@ -86,7 +86,7 @@ export class StudentRepo {
 			firstName: data.firstName,
 			lastName: data.lastName,
 			birthYear: data.birthYear,
-			group: data.group,
+			group: data.group ?? null,
 			phone: data.phone ?? null,
 			fatherPhone: data.fatherPhone ?? null,
 			motherPhone: data.motherPhone ?? null,
@@ -149,7 +149,7 @@ export class StudentService {
 		firstName: string;
 		lastName: string;
 		birthYear: number;
-		group: string;
+		group?: string | null;
 		phone?: string | null;
 		fatherPhone?: string | null;
 		motherPhone?: string | null;

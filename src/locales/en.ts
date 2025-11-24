@@ -41,6 +41,10 @@ export const en = {
 
     // Attendance
     attendance_method: "How would you like to take attendance?",
+    attendance_menu: "What would you like to do?",
+    mark_attendance: "Mark Attendance",
+    browse_by_event: "Browse by Event",
+    browse_by_student: "Browse by Student",
     by_group: "By Group",
     all_students: "All Students",
     by_first_name: "By First Name",
@@ -58,7 +62,7 @@ export const en = {
     attendance_saved: "Attendance saved",
     undo: "Undo",
     save: "Save",
-    
+
     // View student info
     view_info: "View Info",
     view_memorizations: "Memorizations",

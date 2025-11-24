@@ -2,8 +2,8 @@
 import type { Conversation } from '@grammyjs/conversations';
 import { InlineKeyboard } from 'grammy';
 import type { BaseContext, MyContext } from '../../types.js';
-import { StudentService } from './model.js';
 import { t } from '../../utils/i18n.js';
+import { StudentService } from './model.js';
 
 const studentService = new StudentService();
 
@@ -19,7 +19,7 @@ export async function studentMenuConversation(conversation: Conversation<BaseCon
 		ctx.session = { state: 'START', language: 'en' };
 	}
 	const lang = getLang(ctx);
-	
+
 	// Show menu
 	const keyboard = new InlineKeyboard()
 		.text(t('create', lang), 'create').row()
@@ -27,20 +27,20 @@ export async function studentMenuConversation(conversation: Conversation<BaseCon
 		.text(t('delete', lang), 'delete').row()
 		.text(t('view_info', lang), 'view_info').row()
 		.text(t('cancel', lang), 'cancel');
-	
+
 	await ctx.reply(t('what_operation', lang), { reply_markup: keyboard });
-	
+
 	// Wait for button selection
 	const btnCtx = await conversation.wait();
 	const action = btnCtx.callbackQuery?.data;
-	
+
 	if (!action) {
 		await ctx.reply(t('operation_failed', lang));
 		return;
 	}
-	
+
 	await btnCtx.answerCallbackQuery();
-	
+
 	// Delete the menu message
 	if (btnCtx.callbackQuery?.message) {
 		try {
@@ -52,12 +52,12 @@ export async function studentMenuConversation(conversation: Conversation<BaseCon
 			// Ignore deletion errors
 		}
 	}
-	
+
 	if (action === 'cancel') {
 		await ctx.reply(t('operation_cancelled', lang));
 		return;
 	}
-	
+
 	// Route to appropriate conversation
 	if (action === 'create') {
 		await createStudentConversation(conversation, ctx);
@@ -73,7 +73,7 @@ export async function studentMenuConversation(conversation: Conversation<BaseCon
 // Create a new student
 async function createStudentConversation(conversation: Conversation<BaseContext, MyContext>, ctx: MyContext) {
 	const lang = getLang(ctx);
-	
+
 	// Ask for first name
 	await ctx.reply(t('enter_first_name', lang));
 	let response = await conversation.wait();
@@ -82,7 +82,7 @@ async function createStudentConversation(conversation: Conversation<BaseContext,
 		response = await conversation.wait();
 	}
 	const firstName = response.message.text.trim();
-	
+
 	// Ask for last name
 	await ctx.reply(t('enter_last_name', lang));
 	response = await conversation.wait();
@@ -91,7 +91,7 @@ async function createStudentConversation(conversation: Conversation<BaseContext,
 		response = await conversation.wait();
 	}
 	const lastName = response.message.text.trim();
-	
+
 	// Ask for birth year
 	await ctx.reply(t('enter_birth_year', lang));
 	let birthYear: number | null = null;
@@ -104,31 +104,27 @@ async function createStudentConversation(conversation: Conversation<BaseContext,
 			await ctx.reply('Invalid year format. Please enter a 4-digit year (e.g., 2010).');
 		}
 	}
-	
-	// Ask for group
-	await ctx.reply(t('enter_group', lang));
+
+	// Ask for group (optional)
+	await ctx.reply(t('enter_group_optional', lang) || `${t('enter_group', lang)} (${t('optional', lang) || 'optional'})`);
 	response = await conversation.wait();
-	while (!response.message?.text?.trim()) {
-		await ctx.reply(t('enter_group', lang));
-		response = await conversation.wait();
-	}
-	const group = response.message.text.trim();
-	
+	const group = response.message?.text?.trim() || null;
+
 	// Ask for phone (optional)
 	await ctx.reply(t('enter_phone_optional', lang));
 	response = await conversation.wait();
 	const phone = response.message?.text?.trim() || null;
-	
+
 	// Ask for father's phone (optional)
 	await ctx.reply(t('enter_father_phone_optional', lang));
 	response = await conversation.wait();
 	const fatherPhone = response.message?.text?.trim() || null;
-	
+
 	// Ask for mother's phone (optional)
 	await ctx.reply(t('enter_mother_phone_optional', lang));
 	response = await conversation.wait();
 	const motherPhone = response.message?.text?.trim() || null;
-	
+
 	// Save to database
 	await ctx.reply(t('processing', lang));
 	try {
@@ -152,48 +148,48 @@ async function createStudentConversation(conversation: Conversation<BaseContext,
 // Update an existing student
 async function updateStudentConversation(conversation: Conversation<BaseContext, MyContext>, ctx: MyContext) {
 	const lang = getLang(ctx);
-	
+
 	// Search for student
 	await ctx.reply('Enter the student name to search:');
 	let response = await conversation.wait();
 	const searchQuery = response.message?.text?.trim();
-	
+
 	if (!searchQuery) {
 		await ctx.reply(t('operation_failed', lang));
 		return;
 	}
-	
+
 	const results = await studentService.search(searchQuery);
-	
+
 	if (results.length === 0) {
 		await ctx.reply(t('no_results', lang));
 		return;
 	}
-	
+
 	// Show results
 	const keyboard = new InlineKeyboard();
 	for (const result of results.slice(0, 10)) {
 		const student = result.item;
 		keyboard.text(
-			`${student.firstName} ${student.lastName} (${student.group})`,
+			`${student.firstName} ${student.lastName}${student.group ? ` (${student.group})` : ''}`,
 			`student_${student.id}`
 		).row();
 	}
 	keyboard.text(t('cancel', lang), 'cancel');
-	
+
 	await ctx.reply(t('select_student', lang), { reply_markup: keyboard });
-	
+
 	const btnCtx = await conversation.wait();
 	const selectedData = btnCtx.callbackQuery?.data;
-	
+
 	if (!selectedData || selectedData === 'cancel') {
 		await btnCtx.answerCallbackQuery();
 		await ctx.reply(t('operation_cancelled', lang));
 		return;
 	}
-	
+
 	await btnCtx.answerCallbackQuery();
-	
+
 	// Delete menu
 	if (btnCtx.callbackQuery?.message) {
 		try {
@@ -205,31 +201,31 @@ async function updateStudentConversation(conversation: Conversation<BaseContext,
 			// Ignore
 		}
 	}
-	
+
 	const studentId = parseInt(selectedData.replace('student_', ''));
 	const student = await studentService.getById(studentId);
-	
+
 	if (!student) {
 		await ctx.reply(t('operation_failed', lang));
 		return;
 	}
-	
+
 	// Ask what to update
 	await ctx.reply('Enter new first name (or send "-" to keep current):');
 	response = await conversation.wait();
 	const newFirstName = response.message?.text?.trim();
 	const firstName = newFirstName && newFirstName !== '-' ? newFirstName : student.firstName;
-	
+
 	await ctx.reply('Enter new last name (or send "-" to keep current):');
 	response = await conversation.wait();
 	const newLastName = response.message?.text?.trim();
 	const lastName = newLastName && newLastName !== '-' ? newLastName : student.lastName;
-	
-	await ctx.reply('Enter new group (or send "-" to keep current):');
+
+	await ctx.reply('Enter new group (or send "-" to keep current, or send empty to remove):');
 	response = await conversation.wait();
 	const newGroup = response.message?.text?.trim();
-	const group = newGroup && newGroup !== '-' ? newGroup : student.group;
-	
+	const group = newGroup === '-' ? student.group : (newGroup || null);
+
 	// Save updates
 	await ctx.reply(t('processing', lang));
 	try {
@@ -248,48 +244,48 @@ async function updateStudentConversation(conversation: Conversation<BaseContext,
 // Delete a student
 async function deleteStudentConversation(conversation: Conversation<BaseContext, MyContext>, ctx: MyContext) {
 	const lang = getLang(ctx);
-	
+
 	// Search for student
 	await ctx.reply('Enter the student name to search:');
 	let response = await conversation.wait();
 	const searchQuery = response.message?.text?.trim();
-	
+
 	if (!searchQuery) {
 		await ctx.reply(t('operation_failed', lang));
 		return;
 	}
-	
+
 	const results = await studentService.search(searchQuery);
-	
+
 	if (results.length === 0) {
 		await ctx.reply(t('no_results', lang));
 		return;
 	}
-	
+
 	// Show results
 	const keyboard = new InlineKeyboard();
 	for (const result of results.slice(0, 10)) {
 		const student = result.item;
 		keyboard.text(
-			`${student.firstName} ${student.lastName} (${student.group})`,
+			`${student.firstName} ${student.lastName}${student.group ? ` (${student.group})` : ''}`,
 			`student_${student.id}`
 		).row();
 	}
 	keyboard.text(t('cancel', lang), 'cancel');
-	
+
 	await ctx.reply(t('select_student', lang), { reply_markup: keyboard });
-	
+
 	const btnCtx = await conversation.wait();
 	const selectedData = btnCtx.callbackQuery?.data;
-	
+
 	if (!selectedData || selectedData === 'cancel') {
 		await btnCtx.answerCallbackQuery();
 		await ctx.reply(t('operation_cancelled', lang));
 		return;
 	}
-	
+
 	await btnCtx.answerCallbackQuery();
-	
+
 	// Delete menu
 	if (btnCtx.callbackQuery?.message) {
 		try {
@@ -301,30 +297,30 @@ async function deleteStudentConversation(conversation: Conversation<BaseContext,
 			// Ignore
 		}
 	}
-	
+
 	const studentId = parseInt(selectedData.replace('student_', ''));
 	const student = await studentService.getById(studentId);
-	
+
 	if (!student) {
 		await ctx.reply(t('operation_failed', lang));
 		return;
 	}
-	
+
 	// Confirm deletion
 	const confirmKeyboard = new InlineKeyboard()
 		.text('Yes, delete', 'confirm_delete')
 		.text(t('cancel', lang), 'cancel');
-	
+
 	await ctx.reply(
 		`Are you sure you want to delete ${student.firstName} ${student.lastName}?`,
 		{ reply_markup: confirmKeyboard }
 	);
-	
+
 	const confirmCtx = await conversation.wait();
 	const confirmation = confirmCtx.callbackQuery?.data;
-	
+
 	await confirmCtx.answerCallbackQuery();
-	
+
 	// Delete confirmation menu
 	if (confirmCtx.callbackQuery?.message) {
 		try {
@@ -336,7 +332,7 @@ async function deleteStudentConversation(conversation: Conversation<BaseContext,
 			// Ignore
 		}
 	}
-	
+
 	if (confirmation === 'confirm_delete') {
 		await ctx.reply(t('processing', lang));
 		try {
@@ -353,48 +349,48 @@ async function deleteStudentConversation(conversation: Conversation<BaseContext,
 // View student information
 async function viewStudentConversation(conversation: Conversation<BaseContext, MyContext>, ctx: MyContext) {
 	const lang = getLang(ctx);
-	
+
 	// Search for student
 	await ctx.reply('Enter the student name to search:');
 	let response = await conversation.wait();
 	const searchQuery = response.message?.text?.trim();
-	
+
 	if (!searchQuery) {
 		await ctx.reply(t('operation_failed', lang));
 		return;
 	}
-	
+
 	const results = await studentService.search(searchQuery);
-	
+
 	if (results.length === 0) {
 		await ctx.reply(t('no_results', lang));
 		return;
 	}
-	
+
 	// Show results
 	const keyboard = new InlineKeyboard();
 	for (const result of results.slice(0, 10)) {
 		const student = result.item;
 		keyboard.text(
-			`${student.firstName} ${student.lastName} (${student.group})`,
+			`${student.firstName} ${student.lastName}${student.group ? ` (${student.group})` : ''}`,
 			`student_${student.id}`
 		).row();
 	}
 	keyboard.text(t('cancel', lang), 'cancel');
-	
+
 	await ctx.reply(t('select_student', lang), { reply_markup: keyboard });
-	
+
 	const btnCtx = await conversation.wait();
 	const selectedData = btnCtx.callbackQuery?.data;
-	
+
 	if (!selectedData || selectedData === 'cancel') {
 		await btnCtx.answerCallbackQuery();
 		await ctx.reply(t('operation_cancelled', lang));
 		return;
 	}
-	
+
 	await btnCtx.answerCallbackQuery();
-	
+
 	// Delete menu
 	if (btnCtx.callbackQuery?.message) {
 		try {
@@ -406,15 +402,15 @@ async function viewStudentConversation(conversation: Conversation<BaseContext, M
 			// Ignore
 		}
 	}
-	
+
 	const studentId = parseInt(selectedData.replace('student_', ''));
 	const student = await studentService.getById(studentId);
-	
+
 	if (!student) {
 		await ctx.reply(t('operation_failed', lang));
 		return;
 	}
-	
+
 	// Display student info
 	const info = `
 **Student Information**
@@ -422,12 +418,12 @@ async function viewStudentConversation(conversation: Conversation<BaseContext, M
 ID: ${student.id}
 Name: ${student.firstName} ${student.lastName}
 Birth Year: ${student.birthYear}
-Group: ${student.group}
+Group: ${student.group || 'N/A'}
 Phone: ${student.phone || 'N/A'}
 Father's Phone: ${student.fatherPhone || 'N/A'}
 Mother's Phone: ${student.motherPhone || 'N/A'}
 	`.trim();
-	
+
 	await ctx.reply(info, { parse_mode: 'Markdown' });
 }
 
