@@ -2,6 +2,7 @@
 import type { Conversation } from '@grammyjs/conversations';
 import { InlineKeyboard } from 'grammy';
 import type { BaseContext, MyContext } from '../../types.js';
+import { getCurrentUser } from '../../utils/auth.js';
 import { t } from '../../utils/i18n.js';
 import { StudentService, type Student } from './model.js';
 
@@ -20,13 +21,27 @@ export async function studentMenuConversation(conversation: Conversation<BaseCon
 	}
 	const lang = getLang(ctx);
 
-	// Show menu
-	const keyboard = new InlineKeyboard()
-		.text(t('create', lang), 'create').row()
-		.text(t('update', lang), 'update').row()
-		.text(t('delete', lang), 'delete').row()
-		.text(t('view_info', lang), 'view_info').row()
-		.text(t('cancel', lang), 'cancel');
+	// Check user role - teachers can only view, admins can do everything
+	const user = await getCurrentUser(ctx);
+	const isTeacherOnly = user?.role === 'teacher';
+
+	// Show menu based on role
+	const keyboard = new InlineKeyboard();
+
+	if (!isTeacherOnly) {
+		// Admin can create, update, delete, and view
+		keyboard
+			.text(t('create', lang), 'create').row()
+			.text(t('update', lang), 'update').row()
+			.text(t('delete', lang), 'delete').row()
+			.text(t('view_info', lang), 'view_info').row()
+			.text(t('cancel', lang), 'cancel');
+	} else {
+		// Teacher can only view (read-only)
+		keyboard
+			.text(t('view_info', lang), 'view_info').row()
+			.text(t('cancel', lang), 'cancel');
+	}
 
 	await ctx.reply(t('what_operation', lang), { reply_markup: keyboard });
 
@@ -59,6 +74,14 @@ export async function studentMenuConversation(conversation: Conversation<BaseCon
 	}
 
 	// Route to appropriate conversation
+	// Teachers can only access view_info
+	if (isTeacherOnly && action !== 'view_info') {
+		await ctx.reply(lang === 'ar'
+			? 'ليس لديك صلاحية للوصول إلى هذه العملية.'
+			: 'You don\'t have permission to access this operation.');
+		return;
+	}
+
 	if (action === 'create') {
 		await createStudentConversation(conversation, ctx);
 	} else if (action === 'update') {

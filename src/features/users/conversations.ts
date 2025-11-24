@@ -139,6 +139,7 @@ export async function viewProfileConversation(_conversation: Conversation<BaseCo
 		? `
 **معلومات الحساب**
 
+معرف Telegram: \`${user.telegramUserId}\`
 الدور: ${roleText}
 الاسم: ${user.firstName} ${user.lastName || ''}
 الهاتف: ${user.phone || 'غير متوفر'}
@@ -147,6 +148,7 @@ export async function viewProfileConversation(_conversation: Conversation<BaseCo
 		: `
 **Account Information**
 
+Telegram User ID: \`${user.telegramUserId}\`
 Role: ${roleText}
 Name: ${user.firstName} ${user.lastName || ''}
 Phone: ${user.phone || 'N/A'}
@@ -169,20 +171,58 @@ export async function assignRoleConversation(conversation: Conversation<BaseCont
 	// Ask for Telegram user ID or username
 	await ctx.reply(
 		lang === 'ar'
-			? 'أدخل معرف المستخدم في Telegram (User ID):'
-			: 'Enter the Telegram User ID:'
+			? 'أدخل معرف المستخدم في Telegram (User ID) أو اسم المستخدم (Username):'
+			: 'Enter the Telegram User ID or Username (e.g., 123456789 or @username):'
 	);
 
 	let response = await conversation.wait();
-	const userIdText = response.message?.text?.trim();
+	const input = response.message?.text?.trim();
 
-	if (!userIdText) {
+	if (!input) {
 		await ctx.reply(t('operation_failed', lang));
 		return;
 	}
 
-	const telegramUserId = parseInt(userIdText);
-	if (isNaN(telegramUserId)) {
+	// Try to resolve user ID
+	let telegramUserId: number | null = null;
+
+	// If it's a number, use it directly
+	const numericId = parseInt(input);
+	if (!isNaN(numericId)) {
+		telegramUserId = numericId;
+	} else if (input.startsWith('@')) {
+		// If it's a username, try to resolve it
+		try {
+			const username = input.slice(1); // Remove @
+			const chat = await ctx.api.getChat(`@${username}`);
+			if ('id' in chat) {
+				telegramUserId = chat.id;
+			} else {
+				await ctx.reply(
+					lang === 'ar'
+						? 'لا يمكن العثور على المستخدم بهذا الاسم.'
+						: 'Could not find user with that username.'
+				);
+				return;
+			}
+		} catch (err) {
+			await ctx.reply(
+				lang === 'ar'
+					? 'خطأ في البحث عن المستخدم. تأكد من أن المستخدم موجود وأن البوت يمكنه الوصول إليه.'
+					: 'Error finding user. Make sure the user exists and the bot can access them.'
+			);
+			return;
+		}
+	} else {
+		await ctx.reply(
+			lang === 'ar'
+				? 'صيغة غير صحيحة. استخدم معرف المستخدم (رقم) أو اسم المستخدم (يبدأ بـ @).'
+				: 'Invalid format. Use user ID (number) or username (starting with @).'
+		);
+		return;
+	}
+
+	if (!telegramUserId) {
 		await ctx.reply(
 			lang === 'ar'
 				? 'معرف المستخدم غير صحيح.'

@@ -38,6 +38,9 @@ export const en = {
     invalid_page: "Invalid page number. Please enter a number between 0 and 604.",
     memorization_saved: "Memorization record saved!",
     memorization_failed: "Failed to save memorization record.",
+    memorization_menu: "What would you like to do?",
+    enter_new_memorization: "Enter New Memorization",
+    view_student_memorization: "View Student Memorization",
 
     // Attendance
     attendance_method: "How would you like to take attendance?",
@@ -80,4 +83,27 @@ export const en = {
     page: "Page",
     memorizations: "Memorizations",
     attendance: "Attendance",
+    
+    // Start command messages
+    start_admin: "Welcome, Admin! Available commands:\n\n**User Management:**\n/register - Register a new user\n/profile - View your profile\n/users - List all users\n/assignrole - Assign role to user\n\n**Student Management:**\n/students - Manage students\n\n**Teacher Management:**\n/teachers - Manage teachers\n\n**Attendance & Memorization:**\n/attendance - Take attendance\n/memorize - Record memorization\n\n**Utilities:**\n/myid - Get your Telegram ID\n/help - Show help",
+    start_student: "Welcome, Student! Available commands:\n\n**View Your Information:**\n/myinfo - View your student information\n/mymemorization - View your memorization records\n/myattendance - View your attendance records\n/mygroup - View your group information\n/myteacher - View your teacher information\n\n**Account:**\n/profile - View your profile",
+    start_teacher: "Welcome, Teacher! Available commands:\n\n**Attendance & Memorization:**\n/attendance - Take attendance for students\n/memorize - Record memorization for students\n\n**View Information:**\n/students - View students (read-only)\n/teachers - View teachers\n\n**Account:**\n/profile - View your profile",
+    start_unknown: "Welcome! You are not registered yet. Please send me your name and information so I can identify you, or use /register to register manually.",
+    student_info_title: "**Your Student Information**",
+    student_info_name: "Name: {name}",
+    student_info_group: "Group: {group}",
+    student_info_teacher: "Teacher: {teacher}",
+    student_info_no_teacher: "No teacher assigned",
+    student_info_no_group: "No group assigned",
+    my_memorization_title: "**Your Memorization Records**",
+    my_memorization_total: "Total records: {total}",
+    my_memorization_page: "Page {page} - {date}",
+    my_memorization_none: "No memorization records found.",
+    my_attendance_title: "**Your Attendance Records**",
+    my_attendance_total: "Total records: {total}",
+    my_attendance_record: "{event} - {date}",
+    my_attendance_none: "No attendance records found.",
+    not_linked_student: "Your account is not linked to a student record. Please contact an administrator.",
+    identifying_user: "I'm trying to identify you. Please wait...",
+    could_not_identify: "I couldn't identify you automatically. Please use /register to register manually.",
 };

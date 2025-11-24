@@ -38,6 +38,9 @@ export const ar = {
     invalid_page: "رقم الصفحة غير صالح. يرجى إدخال رقم بين 0 و 604.",
     memorization_saved: "تم حفظ سجل الحفظ!",
     memorization_failed: "فشل حفظ سجل الحفظ.",
+    memorization_menu: "ماذا تريد أن تفعل؟",
+    enter_new_memorization: "إدخال حفظ جديد",
+    view_student_memorization: "عرض حفظ الطالب",
 
     // Attendance
     attendance_method: "كيف تريد تسجيل الحضور؟",
@@ -80,4 +83,27 @@ export const ar = {
     page: "صفحة",
     memorizations: "الحفظ",
     attendance: "الحضور",
+    
+    // Start command messages
+    start_admin: "أهلاً بك، المدير! الأوامر المتاحة:\n\n**إدارة المستخدمين:**\n/register - تسجيل مستخدم جديد\n/profile - عرض ملفك الشخصي\n/users - قائمة جميع المستخدمين\n/assignrole - تعيين دور للمستخدم\n\n**إدارة الطلاب:**\n/students - إدارة الطلاب\n\n**إدارة المعلمين:**\n/teachers - إدارة المعلمين\n\n**الحضور والحفظ:**\n/attendance - تسجيل الحضور\n/memorize - تسجيل الحفظ\n\n**أدوات:**\n/myid - الحصول على معرف Telegram الخاص بك\n/help - عرض المساعدة",
+    start_student: "أهلاً بك، الطالب! الأوامر المتاحة:\n\n**عرض معلوماتك:**\n/myinfo - عرض معلوماتك كطالب\n/mymemorization - عرض سجلات الحفظ الخاصة بك\n/myattendance - عرض سجلات الحضور الخاصة بك\n/mygroup - عرض معلومات مجموعتك\n/myteacher - عرض معلومات معلمك\n\n**الحساب:**\n/profile - عرض ملفك الشخصي",
+    start_teacher: "أهلاً بك، المعلم! الأوامر المتاحة:\n\n**الحضور والحفظ:**\n/attendance - تسجيل الحضور للطلاب\n/memorize - تسجيل الحفظ للطلاب\n\n**عرض المعلومات:**\n/students - عرض الطلاب (للقراءة فقط)\n/teachers - عرض المعلمين\n\n**الحساب:**\n/profile - عرض ملفك الشخصي",
+    start_unknown: "أهلاً بك! أنت غير مسجل بعد. يرجى إرسال اسمك ومعلوماتك حتى أتمكن من التعرف عليك، أو استخدم /register للتسجيل يدوياً.",
+    student_info_title: "**معلوماتك كطالب**",
+    student_info_name: "الاسم: {name}",
+    student_info_group: "المجموعة: {group}",
+    student_info_teacher: "المعلم: {teacher}",
+    student_info_no_teacher: "لا يوجد معلم معين",
+    student_info_no_group: "لا توجد مجموعة معينة",
+    my_memorization_title: "**سجلات الحفظ الخاصة بك**",
+    my_memorization_total: "إجمالي السجلات: {total}",
+    my_memorization_page: "الصفحة {page} - {date}",
+    my_memorization_none: "لم يتم العثور على سجلات حفظ.",
+    my_attendance_title: "**سجلات الحضور الخاصة بك**",
+    my_attendance_total: "إجمالي السجلات: {total}",
+    my_attendance_record: "{event} - {date}",
+    my_attendance_none: "لم يتم العثور على سجلات حضور.",
+    not_linked_student: "حسابك غير مرتبط بسجل طالب. يرجى الاتصال بالمسؤول.",
+    identifying_user: "أحاول التعرف عليك. يرجى الانتظار...",
+    could_not_identify: "لم أتمكن من التعرف عليك تلقائياً. يرجى استخدام /register للتسجيل يدوياً.",
 };

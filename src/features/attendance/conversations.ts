@@ -69,13 +69,22 @@ async function markAttendanceConversation(conversation: Conversation<BaseContext
 	const lang = getLang(ctx);
 	
 	// Ask for event name
-	await ctx.reply(t('enter_event_name', lang));
+	await ctx.reply(`${t('enter_event_name', lang)} /today`);
 	let response = await conversation.wait();
-	const event = response.message?.text?.trim();
+	let event = response.message?.text?.trim();
 	
 	if (!event) {
 		await ctx.reply(t('operation_cancelled', lang));
 		return;
+	}
+	
+	// If user replied with /today, set event to current date in YYYY-MM-DD format
+	if (event === '/today') {
+		const now = new Date();
+		const year = now.getFullYear();
+		const month = String(now.getMonth() + 1).padStart(2, '0');
+		const day = String(now.getDate()).padStart(2, '0');
+		event = `${year}-${month}-${day}`;
 	}
 	
 	// Search for student
