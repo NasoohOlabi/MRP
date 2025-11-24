@@ -3,11 +3,12 @@
   "module": "index.ts",
   "type": "module",
   "scripts": {
-    "dev": "bun --watch ./src/app/index.ts",
+    "dev": "bun --watch ./src/index.ts",
+    "dev:old": "bun --watch ./src/app/index.ts",
     "drizzle": "drizzle-kit push",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
-    "build": "bun build ./src/app/index.ts --outdir ./dist --target bun"
+    "build": "bun build ./src/index.ts --outdir ./dist --target bun"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
@@ -15,11 +16,6 @@
   "dependencies": {
     "@grammyjs/conversations": "^2.1.0",
     "@grammyjs/types": "^3.22.2",
-    "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/auto-instrumentations-node": "^0.67.1",
-    "@opentelemetry/instrumentation": "^0.52.1",
-    "@opentelemetry/resources": "^2.2.0",
-    "@opentelemetry/sdk-node": "^0.52.1",
     "dotenv": "^16.5.0",
     "drizzle-kit": "^0.31.7",
     "drizzle-orm": "^0.44.7",

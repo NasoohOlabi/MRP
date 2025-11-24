@@ -18,6 +18,8 @@
     "strict": true,
     "skipLibCheck": true,
     "noFallthroughCasesInSwitch": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
 
     // Stricter flags enabled for type safety
     "noUnusedLocals": true,

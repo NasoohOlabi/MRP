@@ -8,6 +8,7 @@ export type MySession = {
 	state?: string; 
 	language?: 'en' | 'ar';
 	lmStudioHistory?: ChatMessage[];
+	pendingConversation?: string;
 };
 export type BaseContext = Context & SessionFlavor<MySession>;
 export type MyContext = BaseContext & ConversationFlavor<BaseContext>;

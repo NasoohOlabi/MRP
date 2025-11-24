@@ -509,14 +509,55 @@ export function createTreeConversation<Shape = Record<string, string>>(
 
       // Check if onSuccess returned a special object indicating we should exit and enter another conversation
       if (onSuccessResult && typeof onSuccessResult === 'object' && 'exitAndEnter' in onSuccessResult) {
+        const targetConversation = onSuccessResult.exitAndEnter as string;
         logger.info('Attempting to transition to another conversation', {
           userId,
           chatId,
-          targetConversation: onSuccessResult.exitAndEnter
+          targetConversation
         });
-        // Exit current conversation and enter the new one
-        await conv.skip();
-        await ctx.conversation.enter(onSuccessResult.exitAndEnter as string);
+        try {
+          // Ensure session exists
+          if (!ctx.session) {
+            logger.error('Session is undefined, cannot transition conversation', {
+              userId,
+              chatId,
+              targetConversation
+            });
+            // Initialize session if it doesn't exist
+            ctx.session = { state: 'START', language: 'en' };
+          }
+          
+          // Set pending conversation in session
+          ctx.session.pendingConversation = targetConversation;
+          logger.info('Pending conversation set in session', {
+            userId,
+            chatId,
+            targetConversation
+          });
+          
+          // Exit current conversation - the middleware will handle entering the new one
+          // Note: We need to ensure the middleware runs after conversations exit
+          await conv.skip();
+          
+          logger.info('Current conversation skipped', {
+            userId,
+            chatId,
+            targetConversation
+          });
+        } catch (err) {
+          logger.error('Failed to transition to target conversation', {
+            userId,
+            chatId,
+            targetConversation,
+            error: err instanceof Error ? err.message : String(err),
+            stack: err instanceof Error ? err.stack : undefined
+          });
+          // Clear pending conversation on error
+          if (ctx.session) {
+            ctx.session.pendingConversation = undefined;
+          }
+          await ctx.reply(t(opts.failureMessage, getLang(ctx.session)));
+        }
         return;
       }
 

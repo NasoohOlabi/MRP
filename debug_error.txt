@@ -148,3 +148,33 @@
   "totalDurationMs": 544
 }
 
+{
+  "timestamp": "2025-11-24T19:47:42.211Z",
+  "userId": 8194513527,
+  "chatId": 8194513527,
+  "error": "undefined is not an object (evaluating 'ctx.session.pendingConversation = void 0')",
+  "errorStack": "TypeError: undefined is not an object (evaluating 'ctx.session.pendingConversation = void 0')\n    at <anonymous> (D:\\Masjid\\MRP\\src\\conversations\\baseConversation.ts:537:15)\n    at processTicksAndRejections (native:7:39)",
+  "results": [
+    "what_operation"
+  ],
+  "resultsData": {
+    "what_operation": "view_info"
+  },
+  "totalDurationMs": 533
+}
+
+{
+  "timestamp": "2025-11-24T19:47:46.643Z",
+  "userId": 8194513527,
+  "chatId": 8194513527,
+  "error": "undefined is not an object (evaluating 'ctx.session.pendingConversation = void 0')",
+  "errorStack": "TypeError: undefined is not an object (evaluating 'ctx.session.pendingConversation = void 0')\n    at <anonymous> (D:\\Masjid\\MRP\\src\\conversations\\baseConversation.ts:537:15)\n    at processTicksAndRejections (native:7:39)",
+  "results": [
+    "what_operation"
+  ],
+  "resultsData": {
+    "what_operation": "view_info"
+  },
+  "totalDurationMs": 538
+}
+
