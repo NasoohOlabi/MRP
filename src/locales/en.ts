@@ -58,4 +58,22 @@ export const en = {
     attendance_saved: "Attendance saved",
     undo: "Undo",
     save: "Save",
+    
+    // View student info
+    view_info: "View Info",
+    view_memorizations: "Memorizations",
+    view_attendance: "Attendance",
+    what_to_view: "What would you like to view for {name}?",
+    select_student: "Select a student:",
+    select_time_filter: "Select time filter:",
+    all_time: "All Time",
+    last_week: "Last Week",
+    last_month: "Last Month",
+    custom_range: "Custom Range",
+    enter_start_date: "Enter start date (YYYY-MM-DD or MM/DD/YYYY):",
+    enter_end_date: "Enter end date (YYYY-MM-DD or MM/DD/YYYY):",
+    invalid_date: "Invalid date format. Please use YYYY-MM-DD or MM/DD/YYYY.",
+    page: "Page",
+    memorizations: "Memorizations",
+    attendance: "Attendance",
 };

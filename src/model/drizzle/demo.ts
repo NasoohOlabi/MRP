@@ -58,10 +58,10 @@ async function seed() {
 
 	// Seed students only if table is empty
 	const studentsData = [
-		{ first_name: 'Aisha', last_name: 'Khan', birth_date: '2015-06-12', group: 'A' },
-		{ first_name: 'Yusuf', last_name: 'Rahman', birth_date: '2014-03-22', group: 'A' },
-		{ first_name: 'Zain', last_name: 'Iqbal', birth_date: '2013-11-05', group: 'B' },
-		{ first_name: 'Maryam', last_name: 'Naseem', birth_date: '2015-01-18', group: 'B' },
+		{ first_name: 'Aisha', last_name: 'Khan', birth_year: 2015, group: 'A', phone: null, father_phone: null, mother_phone: null },
+		{ first_name: 'Yusuf', last_name: 'Rahman', birth_year: 2014, group: 'A', phone: null, father_phone: null, mother_phone: null },
+		{ first_name: 'Zain', last_name: 'Iqbal', birth_year: 2013, group: 'B', phone: null, father_phone: null, mother_phone: null },
+		{ first_name: 'Maryam', last_name: 'Naseem', birth_year: 2015, group: 'B', phone: null, father_phone: null, mother_phone: null },
 	];
 	for (const s of studentsData) {
 		await studentRepo.create(s);

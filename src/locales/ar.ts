@@ -58,4 +58,22 @@ export const ar = {
     attendance_saved: "تم حفظ الحضور",
     undo: "تراجع",
     save: "حفظ",
+    
+    // View student info
+    view_info: "عرض المعلومات",
+    view_memorizations: "الحفظ",
+    view_attendance: "الحضور",
+    what_to_view: "ماذا تريد أن تعرض لـ {name}؟",
+    select_student: "اختر طالباً:",
+    select_time_filter: "اختر تصفية الوقت:",
+    all_time: "كل الوقت",
+    last_week: "الأسبوع الماضي",
+    last_month: "الشهر الماضي",
+    custom_range: "نطاق مخصص",
+    enter_start_date: "أدخل تاريخ البداية (YYYY-MM-DD أو MM/DD/YYYY):",
+    enter_end_date: "أدخل تاريخ النهاية (YYYY-MM-DD أو MM/DD/YYYY):",
+    invalid_date: "تنسيق التاريخ غير صالح. يرجى استخدام YYYY-MM-DD أو MM/DD/YYYY.",
+    page: "صفحة",
+    memorizations: "الحفظ",
+    attendance: "الحضور",
 };

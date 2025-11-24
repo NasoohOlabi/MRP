@@ -4,45 +4,345 @@ import type {
   AnswerKey,
   BaseContext,
   ButtonOption,
+  ButtonStep,
   MyContext,
   Step,
+  TextStep,
   TreeConversationOptions,
 } from "../types";
-import { cancelAndGreet } from "../utils/greeting.js";
+import { cancelAndGreet, sendGreeting } from "../utils/greeting.js";
 import { t, getLang } from "../utils/i18n.js";
+import { logger } from "../utils/logger.js";
 
 interface InPlaceMeta {
   chatId: number;
   messageId: number;
 }
 
-export function createTreeConversation<S extends Step>(
-  opts: TreeConversationOptions,
+/**
+ * A builder to create linear or branching conversations with type safety.
+ * 
+ * @example
+ * ```ts
+ * const conversation = new ConversationBuilder<{ name: string, role: 'admin' | 'user' }>()
+ *   .text('name', 'enter_name')
+ *   .menu('role', 'select_role', [
+ *     { text: 'Admin', data: 'admin' },
+ *     { text: 'User', data: 'user' }
+ *   ])
+ *   .build(async (results) => {
+ *     console.log(results.name, results.role);
+ *   });
+ * ```
+ */
+export class ConversationBuilder<Shape extends Record<string, any> = Record<string, any>> {
+  private steps: ((next: Step | null) => Step)[] = [];
+
+  /**
+   * Adds a text input step that prompts the user for text input.
+   * 
+   * @param key - The key to store the result under in the final results object
+   * @param prompt - The i18n key for the prompt message
+   * @param options - Configuration options
+   * @param options.validate - Optional validation function. If it returns false, the error message is shown and the user is re-prompted.
+   * @param options.error - i18n key for the error message shown when validation fails
+   * @param options.action - Optional side-effect function called after validation passes
+   * @param options.next - Optional custom next step or function. If not provided, continues to the next step in the chain.
+   * @param options.promptParams - Optional parameters for the prompt message
+   * 
+   * @example
+   * ```ts
+   * .text('age', 'enter_age', {
+   *   validate: (text) => {
+   *     const age = parseInt(text);
+   *     return !isNaN(age) && age > 0 && age < 150;
+   *   },
+   *   error: 'invalid_age',
+   *   action: async (val) => {
+   *     console.log('User entered age:', val);
+   *   }
+   * })
+   * ```
+   */
+  text<K extends keyof Shape & string>(
+    key: K,
+    prompt: string,
+    options: {
+      promptParams?: Record<string, string>;
+      validate?: (text: string) => boolean | Promise<boolean>;
+      error?: string;
+      action?: (value: string) => Promise<void> | void;
+      next?: Step | ((val: string) => Promise<Step | null> | Step | null);
+    } = {}
+  ): this {
+    this.steps.push((nextChain) => ({
+      type: "text",
+      key: key as unknown as AnswerKey,
+      prompt,
+      promptParams: options.promptParams,
+      validate: options.validate,
+      error: options.error,
+      next: async (val) => {
+        if (options.action) await options.action(val);
+        
+        if (options.next) {
+          if (typeof options.next === 'function') {
+             return options.next(val);
+          }
+          return options.next;
+        }
+        
+        return nextChain;
+      },
+    }));
+    return this;
+  }
+
+  /**
+   * Adds a button menu step that displays inline keyboard buttons.
+   * 
+   * @param key - The key to store the selected button's data under in the final results object
+   * @param prompt - The i18n key for the prompt message
+   * @param buttons - Array of button definitions or "__row__" to start a new row
+   * @param options - Configuration options
+   * @param options.inPlace - If true, edits the message instead of sending a new one (useful for pagination)
+   * @param options.onSelect - Optional callback called when a button is selected
+   * @param options.promptParams - Optional parameters for the prompt message
+   * 
+   * @example
+   * ```ts
+   * .menu('operation', 'select_operation', [
+   *   { text: 'Create', data: 'create', next: createFlow },
+   *   { text: 'Update', data: 'update' },
+   *   '__row__', // Start new row
+   *   { text: 'Cancel', data: 'cancel' }
+   ], {
+   *   inPlace: true,
+   *   onSelect: async (data, ctx) => {
+   *     console.log('Selected:', data);
+   *   }
+   * })
+   * ```
+   */
+  menu<K extends keyof Shape & string>(
+    key: K,
+    prompt: string,
+    buttons: (
+      | {
+          text: string;
+          data: string;
+          url?: string;
+          next?: ConversationBuilder<any> | Step | null;
+        }
+      | "__row__"
+    )[],
+    options: {
+      promptParams?: Record<string, string>;
+      inPlace?: boolean;
+      onSelect?: (data: string, ctx: MyContext, btnCtx: MyContext) => Promise<void>;
+    } = {}
+  ): this {
+    this.steps.push((nextChain) => {
+      const builtOptions: ButtonOption[] = buttons.map((b) => {
+        if (b === "__row__") return { text: "", data: "__row__", next: null };
+
+        let nextStep: Step | null | (() => Promise<Step | null>);
+        
+        if (b.next instanceof ConversationBuilder) {
+          nextStep = b.next.compile(); 
+        } else if (b.next !== undefined) {
+          nextStep = b.next;
+        } else {
+          nextStep = nextChain;
+        }
+
+        return {
+          text: b.text,
+          data: b.data,
+          url: b.url,
+          next: nextStep,
+        };
+      });
+
+      return {
+        type: "button",
+        key: key as unknown as AnswerKey,
+        prompt,
+        promptParams: options.promptParams,
+        options: builtOptions,
+        inPlace: options.inPlace,
+        onSelect: options.onSelect ? (d, c, bc) => options.onSelect!(d, c, bc) : undefined,
+      };
+    });
+    return this;
+  }
+
+  /**
+   * Adds a custom step or a step generator function.
+   * Useful for integrating dynamic steps (like pagination) that can't be expressed with the builder API.
+   * 
+   * @param stepOrFactory - Either a Step object or a function that takes the next step and returns a Step
+   * 
+   * @example
+   * ```ts
+   * .add((next) => ({
+   *   type: 'button',
+   *   key: 'custom' as AnswerKey,
+   *   prompt: 'custom_prompt',
+   *   options: [...]
+   * }))
+   * ```
+   */
+  add(stepOrFactory: Step | ((next: Step | null) => Step)): this {
+    if (typeof stepOrFactory === 'function') {
+      this.steps.push(stepOrFactory);
+    } else {
+      this.steps.push(() => stepOrFactory);
+    }
+    return this;
+  }
+
+  /**
+   * Compiles the builder into a Step tree.
+   * Internal use mostly, but can be used to compose builders or create branches.
+   * 
+   * @param next - Optional next step to chain after this builder's steps
+   * @returns The compiled Step tree
+   */
+  compile(next: Step | null = null): Step {
+    let current: Step | null = next;
+    for (let i = this.steps.length - 1; i >= 0; i--) {
+      current = this.steps[i](current);
+    }
+    if (!current) throw new Error("ConversationBuilder cannot be empty");
+    return current;
+  }
+
+  /**
+   * Builds the conversation function to be registered with bot.use(createConversation(...)).
+   * 
+   * @param onSuccess - Callback called when the conversation completes successfully. Receives the collected results.
+   * @param options - Optional configuration
+   * @param options.successMessage - i18n key for the success message (default: "operation_completed")
+   * @param options.failureMessage - i18n key for the failure message (default: "operation_failed")
+   * @returns A conversation function compatible with @grammyjs/conversations
+   * 
+   * @example
+   * ```ts
+   * .build(
+   *   async (results) => {
+   *     await saveToDatabase(results);
+   *   },
+   *   {
+   *     successMessage: 'data_saved',
+   *     failureMessage: 'save_failed'
+   *   }
+   * )
+   * ```
+   */
+  build(
+    onSuccess: (results: Shape) => Promise<any> | any,
+    options: { successMessage?: string; failureMessage?: string } = {}
+  ) {
+    const entry = this.compile();
+    return createTreeConversation<Shape>({
+      entry,
+      onSuccess,
+      successMessage: options.successMessage || "operation_completed",
+      failureMessage: options.failureMessage || "operation_failed",
+    });
+  }
+}
+
+/**
+ * The core runner for the Tree Conversation protocol.
+ */
+export function createTreeConversation<Shape = Record<string, string>>(
+  opts: TreeConversationOptions<Shape>,
 ) {
   return async (conv: Conversation<BaseContext, MyContext>, ctx: MyContext) => {
+    const conversationStartTime = Date.now();
+    const userId = ctx.from?.id;
+    const chatId = ctx.chat?.id;
     const results: Record<string, string> = {};
     let inPlaceMeta: InPlaceMeta | undefined = undefined;
+
+    logger.info('Conversation started', { 
+      userId, 
+      chatId, 
+      conversationType: opts.entry?.type || 'unknown' 
+    });
 
     try {
       let step: Step | null = opts.entry;
 
       while (step) {
         if (step.type === "text") {
+          logger.debug('Conversation step: text input', { 
+            userId, 
+            chatId, 
+            stepKey: step.key,
+            prompt: step.prompt 
+          });
           await ctx.reply(t(step.prompt, getLang(ctx.session), step.promptParams));
-          const res = await conv.wait();
-          const text = res.message?.text;
-
-          if (text && step.validate && !(await step.validate(text))) {
-            if (step.error) await ctx.reply(t(step.error, getLang(ctx.session)));
-            return; // early exit; consumer can retry by re-entering
+          
+          let text: string | undefined;
+          while (true) {
+            const res = await conv.wait();
+            
+            if (res.message?.text) {
+              text = res.message.text;
+              // Check if user sent /start to cancel the conversation
+              if (text.trim() === '/start') {
+                logger.info('Conversation cancelled by /start command', { userId, chatId, stepKey: step.key });
+                await cancelAndGreet(ctx);
+                return;
+              }
+              break;
+            } else if (res.callbackQuery) {
+               await res.answerCallbackQuery();
+            } else if (res.message) {
+              // User sent a non-text message (photo, video, etc.)
+              logger.debug('Conversation: Non-text message received', { 
+                userId, 
+                chatId, 
+                messageType: res.message?.photo ? 'photo' : res.message?.video ? 'video' : 'other' 
+              });
+              await ctx.reply(t("please_send_text", getLang(ctx.session)));
+            }
           }
 
-          results[step.key] = text!.trim();
-          step = await step.next(text!);
-        } else if (step.type === "button") {
+          if (step.validate && !(await step.validate(text))) {
+            logger.debug('Conversation: Validation failed', { 
+              userId, 
+              chatId, 
+              stepKey: step.key,
+              input: text?.substring(0, 50) 
+            });
+            if (step.error) await ctx.reply(t(step.error, getLang(ctx.session)));
+            continue; 
+          }
+
+          logger.debug('Conversation: Text input received', { 
+            userId, 
+            chatId, 
+            stepKey: step.key,
+            inputLength: text?.length 
+          });
+          results[step.key] = text.trim();
+          step = await step.next(text);
+        } 
+        
+        else if (step.type === "button") {
+          logger.debug('Conversation step: button menu', { 
+            userId, 
+            chatId, 
+            stepKey: step.key,
+            prompt: step.prompt,
+            optionCount: step.options.length 
+          });
           const keyboard = new InlineKeyboard();
           for (const opt of step.options) {
-            // Support row breaks using a sentinel data value
             if (opt.data === "__row__") {
               keyboard.row();
               continue;
@@ -52,28 +352,36 @@ export function createTreeConversation<S extends Step>(
               : keyboard.text(t(opt.text, getLang(ctx.session)), opt.data);
           }
 
-          /* ---------- send or edit ---------- */
-          const sendOrEdit = async (text: string) => {
-            if (step && step.type === 'button' && step.inPlace && inPlaceMeta) {
-              return ctx.api.editMessageText(
+          const messageText = t(step.prompt, getLang(ctx.session), step.promptParams);
+          let sentMessage: Awaited<ReturnType<typeof ctx.reply>> | undefined;
+
+          if (step.inPlace && inPlaceMeta) {
+            try {
+              await ctx.api.editMessageText(
                 inPlaceMeta.chatId,
                 inPlaceMeta.messageId,
-                text,
+                messageText,
                 { reply_markup: keyboard },
               );
+            } catch (e) {
+              logger.warn('Conversation: Failed to edit message in place, sending new message', { 
+                userId, 
+                chatId, 
+                error: e instanceof Error ? e.message : String(e) 
+              });
+              sentMessage = await ctx.reply(messageText, { reply_markup: keyboard });
             }
-            const sent = await ctx.reply(text, { reply_markup: keyboard });
-            if (step && step.type === 'button' && step.inPlace) {
-              inPlaceMeta = {
-                chatId: sent.chat.id,
-                messageId: sent.message_id,
-              };
-            }
-          };
+          } else {
+            sentMessage = await ctx.reply(messageText, { reply_markup: keyboard });
+          }
 
-          await sendOrEdit(t(step.prompt, getLang(ctx.session), step.promptParams));
+          if (sentMessage && step.inPlace) {
+             inPlaceMeta = {
+               chatId: sentMessage.chat.id,
+               messageId: sentMessage.message_id,
+             };
+          }
 
-          /* ---------- wait for click ---------- */
           const btnCtx = await conv.wait();
           const data = btnCtx.callbackQuery?.data;
 
@@ -81,22 +389,72 @@ export function createTreeConversation<S extends Step>(
             if (btnCtx.callbackQuery) {
               await btnCtx.answerCallbackQuery({ text: t("please_select_option", getLang(ctx.session)) });
             }
-            continue; // stay on same node
+            continue;
           }
 
           if (data === 'cancel') {
-            await cancelAndGreet(ctx, btnCtx);
+            logger.info('Conversation cancelled by user', { userId, chatId, stepKey: step.key });
+            // Always answer the callback query first
+            try {
+              await btnCtx.answerCallbackQuery();
+            } catch (err) {
+              logger.warn('Failed to answer callback query on cancel', {
+                userId,
+                chatId,
+                error: err instanceof Error ? err.message : String(err),
+              });
+            }
+            // Then handle the cancel flow
+            try {
+              await cancelAndGreet(ctx, btnCtx);
+            } catch (err) {
+              logger.error('Error during cancel flow', {
+                userId,
+                chatId,
+                error: err instanceof Error ? err.message : String(err),
+                errorStack: err instanceof Error ? err.stack : undefined,
+              });
+              // Still try to send greeting even if cancelAndGreet failed
+              try {
+                await sendGreeting(ctx);
+              } catch (greetErr) {
+                logger.error('Error sending greeting after cancel', {
+                  userId,
+                  chatId,
+                  error: greetErr instanceof Error ? greetErr.message : String(greetErr),
+                });
+              }
+            }
             inPlaceMeta = undefined;
             return;
           }
-          const opt: ButtonOption<AnswerKey<string>> = step.options.find((o) => o.data === data)!;
-          await btnCtx.answerCallbackQuery({ text: `${t("you_selected", getLang(ctx.session))} ${t(opt.text, getLang(ctx.session))}` });
+
+          const opt: ButtonOption<AnswerKey> | undefined = step.options.find((o) => o.data === data);
+          if (!opt) {
+              logger.warn('Conversation: Invalid option selected', { 
+                userId, 
+                chatId, 
+                stepKey: step.key,
+                selectedData: data 
+              });
+              await btnCtx.answerCallbackQuery({ text: "⚠️" });
+              continue;
+          }
+
+          logger.debug('Conversation: Button selected', { 
+            userId, 
+            chatId, 
+            stepKey: step.key,
+            selectedData: data 
+          });
+          await btnCtx.answerCallbackQuery({ 
+              text: `${t("you_selected", getLang(ctx.session))} ${t(opt.text, getLang(ctx.session))}` 
+          });
 
           if (step.onSelect) await step.onSelect(data, ctx, btnCtx);
 
           results[step.key] = data;
 
-          /* ---------- compute next node ---------- */
           let potential: Step | null;
           if (typeof opt.next === 'function') {
             potential = await (opt.next as () => Promise<Step | null>)();
@@ -105,19 +463,45 @@ export function createTreeConversation<S extends Step>(
           }
           step = potential;
 
-          /* ---------- leave in-place mode? ---------- */
           if (!step || step.type !== "button" || !step.inPlace) {
             inPlaceMeta = undefined;
           }
         }
       }
 
-      /* ---------- finished ---------- */
       await ctx.reply(t("processing", getLang(ctx.session)));
-      await conv.external(() => opts.onSuccess(results));
+      const onSuccessStartTime = Date.now();
+      const onSuccessResult = await conv.external(() => opts.onSuccess(results as Shape));
+      const onSuccessDuration = Date.now() - onSuccessStartTime;
+      
+      // Check if onSuccess returned a special object indicating we should exit and enter another conversation
+      if (onSuccessResult && typeof onSuccessResult === 'object' && 'exitAndEnter' in onSuccessResult) {
+        // Enter the new conversation (the framework will handle exiting the current one)
+        await ctx.conversation.enter(onSuccessResult.exitAndEnter as string);
+        return;
+      }
+      
       await ctx.reply(t(opts.successMessage, getLang(ctx.session)));
+      
+      const totalDuration = Date.now() - conversationStartTime;
+      logger.info('Conversation completed successfully', { 
+        userId, 
+        chatId, 
+        resultsCount: Object.keys(results).length,
+        onSuccessDurationMs: onSuccessDuration,
+        totalDurationMs: totalDuration 
+      });
+
     } catch (err) {
-      console.error("Tree conversation error:", err);
+      const totalDuration = Date.now() - conversationStartTime;
+      logger.error('Conversation error', { 
+        userId, 
+        chatId, 
+        error: err instanceof Error ? err.message : String(err),
+        errorStack: err instanceof Error ? err.stack : undefined,
+        results: Object.keys(results),
+        totalDurationMs: totalDuration 
+      });
       await ctx.reply(t(opts.failureMessage, getLang(ctx.session)));
     }
   };

@@ -20,22 +20,23 @@ export const teacherCrudConversation = (repo: TeacherRepo) => createTreeConversa
 			},
 		],
 		onSelect: async (data, ctx, res) => {
-			if (data === 'cancel') {
-				await res.editMessageText("operation_cancelled");
-				throw new Error("User cancelled operation.");
-			} else {
+			// Note: cancel is handled by baseConversation before onSelect is called
+			if (data !== 'cancel') {
 				await res.editMessageText(`you_selected ${data.toUpperCase()}`);
 			}
 		},
 	} as ButtonStep,
 	onSuccess: async (results) => {
-		const op = results["what_operation"];
+		if (!results) {
+			return null;
+		}
+		const op = results["what_operation" as keyof typeof results] as string | undefined;
 		if (op === "create") {
 			const newTeacherData = {
-				first_name: results["enter_first_name"],
-				last_name: results["enter_last_name"],
-				phone_number: results["enter_phone"],
-				group: results["enter_group"],
+				first_name: results["enter_first_name" as keyof typeof results] as string,
+				last_name: results["enter_last_name" as keyof typeof results] as string,
+				phone_number: results["enter_phone" as keyof typeof results] as string,
+				group: results["enter_group" as keyof typeof results] as string,
 			};
 			const response = await repo.create(newTeacherData);
 			return JSON.stringify(response);

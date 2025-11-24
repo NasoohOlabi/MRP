@@ -1,5 +1,5 @@
 import type { StudentRepo } from "../../../model/drizzle/repos"
-import type { ButtonStep, Step } from "../../../types"
+import type { ButtonStep, Step, AnswerKey } from "../../../types"
 
 
 export const deleteStep: (repo: StudentRepo) => ButtonStep['options'][number] = (repo: StudentRepo) => ({
@@ -7,6 +7,7 @@ export const deleteStep: (repo: StudentRepo) => ButtonStep['options'][number] = 
 	data: "delete",
 	next: {
 		type: 'text',
+		key: 'which_student_to_delete' as AnswerKey,
 		prompt: "Which student to delete:",
 		validate: (t) => !!t?.trim(),
 		error: "Student is required.",
@@ -15,6 +16,7 @@ export const deleteStep: (repo: StudentRepo) => ButtonStep['options'][number] = 
 			console.log(`results for ${response}`, results)
 			return {
 				type: 'text',
+				key: 'select_student_number' as AnswerKey,
 				prompt: "Tap on the student number:\n\n" + results.map((s, idx) => `/${idx} - ${s.item.first_name} ${s.item.last_name}`).join('\n'),
 				validate: (t) => !!t && t.trim().startsWith('/') && !isNaN(+t.trim().slice(1)),
 				error: "tap on one of the numbers.",

@@ -4,12 +4,19 @@ import { AttendanceRepo, StudentRepo, Student } from '../../model/drizzle/repos'
 import type { BaseContext, MyContext } from '../../types';
 import { cancelAndGreet } from '../../utils/greeting.js';
 import { t, getLang } from '../../utils/i18n.js';
+import { logger } from '../../utils/logger.js';
+import { normalizeEventName } from '../../utils/eventUtils.js';
 
 type AttendanceMethod = 'by_group' | 'all_students' | 'by_first_name' | 'by_last_name' | 'by_search';
 
 export const createAttendanceTakingConversation = (attRepo: AttendanceRepo, studentRepo: StudentRepo) =>
     async (conv: Conversation<BaseContext, MyContext>, ctx: MyContext) => {
+        const userId = ctx.from?.id;
+        const chatId = ctx.chat?.id;
+        const conversationStartTime = Date.now();
         const lang = getLang(ctx.session);
+
+        logger.info('Attendance conversation started', { userId, chatId });
 
         // Step 1: Select attendance method
         const methodKb = new InlineKeyboard();
@@ -26,21 +33,29 @@ export const createAttendanceTakingConversation = (attRepo: AttendanceRepo, stud
         const method = res.callbackQuery?.data as AttendanceMethod | 'cancel' | undefined;
         if (res.callbackQuery) await res.answerCallbackQuery();
         if (!method || method === 'cancel') {
+            logger.info('Attendance conversation cancelled', { userId, chatId });
             await cancelAndGreet(ctx, res, 'operation_cancelled');
             return;
         }
 
+        logger.info('Attendance method selected', { userId, chatId, method });
+
         // Step 2: Get event name
         await ctx.reply(t('enter_event_name', lang));
         const eventRes = await conv.wait();
-        const event = eventRes.message?.text?.trim() || '';
-        if (!event) {
+        const rawEvent = eventRes.message?.text?.trim() || '';
+        if (!rawEvent) {
+            logger.warn('Attendance conversation: Empty event name', { userId, chatId });
             await ctx.reply(t('operation_cancelled', lang));
             return;
         }
+        const event = normalizeEventName(rawEvent);
+
+        logger.info('Event name received', { userId, chatId, rawEvent, event });
 
         // Step 3: Get all students
         const allStudents = await studentRepo.read();
+        logger.debug('Students loaded for attendance', { userId, chatId, studentCount: allStudents.length });
 
         // Step 4: Route to appropriate flow
         switch (method) {
@@ -60,6 +75,9 @@ export const createAttendanceTakingConversation = (attRepo: AttendanceRepo, stud
                 await handleBySearch(conv, ctx, attRepo, studentRepo, event, lang);
                 break;
         }
+
+        const totalDuration = Date.now() - conversationStartTime;
+        logger.info('Attendance conversation completed', { userId, chatId, method, event, totalDurationMs: totalDuration });
     };
 
 // Helper function to display paginated student list and handle marking
@@ -151,12 +169,41 @@ async function displayStudentList(
                 await ctx.answerCallbackQuery({ text: t('nothing_to_undo', lang) });
             }
         } else if (cmd === 'save') {
+            const userId = ctx.from?.id;
+            const chatId = ctx.chat?.id;
+            const saveStartTime = Date.now();
+            logger.info('Saving attendance records', { 
+                userId, 
+                chatId, 
+                event, 
+                recordCount: markedStudents.length 
+            });
+            
+            let savedCount = 0;
+            let skippedCount = 0;
             for (const record of markedStudents) {
-                await attRepo.create({ student_id: record.student_id, event: record.event });
+                const result = await attRepo.create({ student_id: record.student_id, event: record.event });
+                if (result) {
+                    savedCount++;
+                } else {
+                    skippedCount++;
+                }
             }
+            
             if (messageId) {
                 await ctx.api.deleteMessage(ctx.chat?.id!, messageId);
             }
+            
+            const saveDuration = Date.now() - saveStartTime;
+            logger.info('Attendance records saved', { 
+                userId, 
+                chatId, 
+                event, 
+                savedCount, 
+                skippedCount,
+                durationMs: saveDuration 
+            });
+            
             await ctx.reply(t('attendance_saved', lang));
             return;
         } else if (cmd.startsWith('present:') || cmd.startsWith('absent:')) {
@@ -274,23 +321,30 @@ async function handleBySearch(
     event: string,
     lang: string
 ) {
+    const userId = ctx.from?.id;
+    const chatId = ctx.chat?.id;
+    
     await ctx.reply(t('type_search', lang));
 
     const searchRes = await conv.wait();
     const query = searchRes.message?.text?.trim() || '';
 
     if (!query) {
+        logger.warn('Attendance search: Empty query', { userId, chatId });
         await ctx.reply(t('operation_cancelled', lang));
         return;
     }
 
+    logger.info('Attendance search initiated', { userId, chatId, query, event });
     const results = await studentRepo.lookFor(query);
     const students = results.map(r => r.item);
 
     if (students.length === 0) {
+        logger.info('Attendance search: No results found', { userId, chatId, query });
         await ctx.reply(t('no_results', lang));
         return;
     }
 
+    logger.info('Attendance search: Results found', { userId, chatId, query, resultCount: students.length });
     await displayStudentList(conv, ctx, attRepo, students, event, lang, `${t('search', lang)}: "${query}"`);
 }

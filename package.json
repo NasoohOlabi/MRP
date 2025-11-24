@@ -24,6 +24,8 @@
     "google-spreadsheet": "^4.1.4",
     "grammy": "^1.38.3",
     "mrp": "file:",
-    "telegraf": "^4.16.3"
+    "telegraf": "^4.16.3",
+    "winston": "^3.18.3",
+    "winston-daily-rotate-file": "^5.0.0"
   }
 }

@@ -1,11 +1,11 @@
-import { StudentRepo } from '../../model/drizzle/repos';
+import { AttendanceRepo, MemorizationRepo, StudentRepo } from '../../model/drizzle/repos';
 import type { AnswerKey } from '../../types';
 import { createTreeConversation } from '../baseConversation';
 import { createStep } from './flows/create';
 import { deleteStep } from './flows/delete';
 import { updateStep } from './flows/update';
 
-export const studentCrudConversation = (repo: StudentRepo) => createTreeConversation({
+export const studentCrudConversation = (repo: StudentRepo, memorizationRepo: MemorizationRepo, attendanceRepo: AttendanceRepo) => createTreeConversation({
 	entry: {
 		type: 'button',
 		key: 'student_crud_entry' as AnswerKey,
@@ -15,22 +15,34 @@ export const studentCrudConversation = (repo: StudentRepo) => createTreeConversa
 			updateStep(repo),
 			deleteStep(repo),
 			{
+				text: "view_info",
+				data: "view_info",
+				next: null,
+			},
+			{
 				text: "cancel",
 				data: "cancel",
 				next: null,
 			},
 		],
 		onSelect: async (data, ctx, res) => {
-			if (data === 'cancel') {
-				await res.editMessageText("operation_cancelled");
+			// Note: cancel is handled by baseConversation before onSelect is called
+			if (data === "view_info") {
+				// Store a flag to exit and enter view conversation in onSuccess
+				// We'll handle the transition there
 				return;
-			} else {
+			}
+			if (data !== 'cancel') {
 				await res.editMessageText(`you_selected ${data.toUpperCase()}`);
 			}
 		},
 	},
 	onSuccess: async (results) => {
 		const op = results["what_operation"];
+		if (op === "view_info") {
+			// Return special object to trigger exit and enter view conversation
+			return { exitAndEnter: 'viewStudentInfoConversation' };
+		}
 		if (op === "create") {
 			const phone = results["enter_phone"]?.trim() || null;
 			const fatherPhone = results["enter_father_phone"]?.trim() || null;

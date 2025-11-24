@@ -3,6 +3,7 @@ import { InlineKeyboard } from 'grammy';
 import { AttendanceRepo, StudentRepo, TeacherRepo } from '../../model/drizzle/repos';
 import type { BaseContext, MyContext } from '../../types';
 import { cancelAndGreet } from '../../utils/greeting.js';
+import { normalizeEventName } from '../../utils/eventUtils.js';
 
 export const createTeacherQuickAttendance = (
   attRepo: AttendanceRepo,
@@ -19,7 +20,8 @@ export const createTeacherQuickAttendance = (
   if (ev === 'ev:custom') {
     await ctx.reply('Type event name');
     const eRes = await conv.wait();
-    event = eRes.message?.text?.trim() || '';
+    const rawEvent = eRes.message?.text?.trim() || '';
+    event = normalizeEventName(rawEvent);
   }
 
   await ctx.reply('Enter phone number');

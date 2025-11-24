@@ -3,6 +3,7 @@ import { InlineKeyboard } from 'grammy';
 import { AttendanceRepo, StudentRepo, Student } from '../../model/drizzle/repos';
 import type { BaseContext, MyContext } from '../../types';
 import { cancelAndGreet } from '../../utils/greeting.js';
+import { normalizeEventName } from '../../utils/eventUtils.js';
 
 export const createAttendanceConversation = (attRepo: AttendanceRepo, studentRepo: StudentRepo) => async (conv: Conversation<BaseContext, MyContext>, ctx: MyContext) => {
   const first = new InlineKeyboard();
@@ -21,7 +22,8 @@ export const createAttendanceConversation = (attRepo: AttendanceRepo, studentRep
   if (action === 'mark') {
     await ctx.reply('Type event name');
     const eRes = await conv.wait();
-    const event = eRes.message?.text?.trim() || '';
+    const rawEvent = eRes.message?.text?.trim() || '';
+    const event = normalizeEventName(rawEvent);
 
     const gKb = new InlineKeyboard();
     for (const g of groups) gKb.text(g, `group:${g}`);
@@ -66,7 +68,8 @@ export const createAttendanceConversation = (attRepo: AttendanceRepo, studentRep
   if (action === 'view') {
     await ctx.reply('Type event name');
     const eRes = await conv.wait();
-    const event = eRes.message?.text?.trim() || '';
+    const rawEvent = eRes.message?.text?.trim() || '';
+    const event = normalizeEventName(rawEvent);
 
     const gKb = new InlineKeyboard();
     gKb.text('All', 'all');
@@ -96,7 +99,8 @@ export const createAttendanceConversation = (attRepo: AttendanceRepo, studentRep
   if (action === 'undo') {
     await ctx.reply('Type event name');
     const eRes = await conv.wait();
-    const event = eRes.message?.text?.trim() || '';
+    const rawEvent = eRes.message?.text?.trim() || '';
+    const event = normalizeEventName(rawEvent);
 
     const gKb = new InlineKeyboard();
     for (const g of groups) gKb.text(g, `group:${g}`);
