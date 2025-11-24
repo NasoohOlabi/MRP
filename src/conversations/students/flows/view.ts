@@ -3,15 +3,20 @@ import { InlineKeyboard } from 'grammy';
 import { AttendanceRepo, MemorizationRepo, Student, StudentRepo } from '../../../model/drizzle/repos';
 import type { BaseContext, MyContext } from '../../../types';
 import { cancelAndGreet } from '../../../utils/greeting.js';
-import { t, getLang } from '../../../utils/i18n.js';
+import { getLang, t } from '../../../utils/i18n.js';
+import { logger } from '../../../utils/logger.js';
 
 const PAGE_SIZE = 10;
 
 export const createViewConversation = (studentRepo: StudentRepo, memorizationRepo: MemorizationRepo, attendanceRepo: AttendanceRepo) => {
 	return async (conv: Conversation<BaseContext, MyContext>, ctx: MyContext) => {
+		const userId = ctx.from?.id;
+		const chatId = ctx.chat?.id;
+		logger.info('viewStudentInfoConversation: Conversation started', { userId, chatId });
+
 		const lang = getLang(ctx.session);
 		let inPlace: { chatId: number; messageId: number } | null = null;
-		
+
 		const sendOrEdit = async (text: string, kb?: InlineKeyboard) => {
 			if (inPlace && kb) {
 				try {
@@ -29,14 +34,23 @@ export const createViewConversation = (studentRepo: StudentRepo, memorizationRep
 		await ctx.reply(t('enter_student_name', lang));
 		const nameRes = await conv.wait();
 		const studentName = nameRes.message?.text?.trim();
+		logger.info('viewStudentInfoConversation: Student name entered', { userId, chatId, studentName });
 		if (!studentName) {
+			logger.info('viewStudentInfoConversation: No student name provided, cancelling', { userId, chatId });
 			await cancelAndGreet(ctx, nameRes);
 			return;
 		}
 
 		// Search for student
 		const searchResults = await studentRepo.lookFor(studentName);
+		logger.info('viewStudentInfoConversation: Student search completed', {
+			userId,
+			chatId,
+			searchTerm: studentName,
+			resultCount: searchResults.length
+		});
 		if (searchResults.length === 0) {
+			logger.info('viewStudentInfoConversation: No search results found', { userId, chatId, searchTerm: studentName });
 			await ctx.reply(t('no_results', lang));
 			return;
 		}
@@ -45,6 +59,12 @@ export const createViewConversation = (studentRepo: StudentRepo, memorizationRep
 		let selectedStudent: Student;
 		if (searchResults.length === 1) {
 			selectedStudent = searchResults[0].item;
+			logger.info('viewStudentInfoConversation: Single student found, auto-selected', {
+				userId,
+				chatId,
+				studentId: selectedStudent.id,
+				studentName: `${selectedStudent.first_name} ${selectedStudent.last_name}`
+			});
 		} else {
 			// Show selection menu for multiple results
 			const selectKb = new InlineKeyboard();
@@ -56,7 +76,7 @@ export const createViewConversation = (studentRepo: StudentRepo, memorizationRep
 			}
 			if (maxShow % 2 === 1) selectKb.row();
 			selectKb.text(t('cancel', lang), 'cancel');
-			
+
 			await sendOrEdit(t('select_student', lang), selectKb);
 			const selectionRes = await conv.wait();
 			const callbackData = selectionRes.callbackQuery?.data;
@@ -68,7 +88,15 @@ export const createViewConversation = (studentRepo: StudentRepo, memorizationRep
 			if (callbackData.startsWith('select_')) {
 				const index = parseInt(callbackData.split('_')[1]);
 				selectedStudent = searchResults[index].item;
+				logger.info('viewStudentInfoConversation: Student selected from multiple results', {
+					userId,
+					chatId,
+					studentId: selectedStudent.id,
+					studentName: `${selectedStudent.first_name} ${selectedStudent.last_name}`,
+					selectedIndex: index
+				});
 			} else {
+				logger.info('viewStudentInfoConversation: Invalid selection, cancelling', { userId, chatId, callbackData });
 				await cancelAndGreet(ctx, selectionRes);
 				return;
 			}
@@ -80,7 +108,7 @@ export const createViewConversation = (studentRepo: StudentRepo, memorizationRep
 		infoKb.text(t('view_attendance', lang), 'attendance');
 		infoKb.row();
 		infoKb.text(t('cancel', lang), 'cancel');
-		
+
 		await sendOrEdit(
 			t('what_to_view', lang, { name: `${selectedStudent.first_name} ${selectedStudent.last_name}` }),
 			infoKb
@@ -89,7 +117,14 @@ export const createViewConversation = (studentRepo: StudentRepo, memorizationRep
 		const infoRes = await conv.wait();
 		const infoType = infoRes.callbackQuery?.data;
 		if (infoRes.callbackQuery) await infoRes.answerCallbackQuery();
+		logger.info('viewStudentInfoConversation: Info type selected', {
+			userId,
+			chatId,
+			infoType,
+			studentId: selectedStudent.id
+		});
 		if (!infoType || infoType === 'cancel') {
+			logger.info('viewStudentInfoConversation: Info type selection cancelled', { userId, chatId });
 			await cancelAndGreet(ctx, infoRes);
 			return;
 		}
@@ -108,7 +143,15 @@ export const createViewConversation = (studentRepo: StudentRepo, memorizationRep
 		const filterRes = await conv.wait();
 		const filterType = filterRes.callbackQuery?.data;
 		if (filterRes.callbackQuery) await filterRes.answerCallbackQuery();
+		logger.info('viewStudentInfoConversation: Time filter selected', {
+			userId,
+			chatId,
+			filterType,
+			infoType,
+			studentId: selectedStudent.id
+		});
 		if (!filterType || filterType === 'cancel') {
+			logger.info('viewStudentInfoConversation: Time filter selection cancelled', { userId, chatId });
 			await cancelAndGreet(ctx, filterRes);
 			return;
 		}
@@ -120,10 +163,12 @@ export const createViewConversation = (studentRepo: StudentRepo, memorizationRep
 			const now = new Date();
 			toDate = now;
 			fromDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+			logger.info('viewStudentInfoConversation: Week filter applied', { userId, chatId, fromDate, toDate });
 		} else if (filterType === 'month') {
 			const now = new Date();
 			toDate = now;
 			fromDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+			logger.info('viewStudentInfoConversation: Month filter applied', { userId, chatId, fromDate, toDate });
 		} else if (filterType === 'custom') {
 			await ctx.reply(t('enter_start_date', lang));
 			const startRes = await conv.wait();
@@ -152,6 +197,9 @@ export const createViewConversation = (studentRepo: StudentRepo, memorizationRep
 				return;
 			}
 			toDate = parsedToDate;
+			logger.info('viewStudentInfoConversation: Custom date range applied', { userId, chatId, fromDate, toDate });
+		} else {
+			logger.info('viewStudentInfoConversation: All time filter applied (no date range)', { userId, chatId });
 		}
 
 		// Step 4: Display paginated results
@@ -164,6 +212,17 @@ export const createViewConversation = (studentRepo: StudentRepo, memorizationRep
 			let total = 0;
 			let title = '';
 
+			logger.info('viewStudentInfoConversation: Fetching records', {
+				userId,
+				chatId,
+				infoType,
+				studentId: selectedStudent.id,
+				page,
+				offset,
+				fromDate,
+				toDate
+			});
+
 			if (infoType === 'memorizations') {
 				const result = await memorizationRepo.readByStudentIdPaginated(selectedStudent.id, {
 					fromDate,
@@ -174,6 +233,14 @@ export const createViewConversation = (studentRepo: StudentRepo, memorizationRep
 				records = result.records;
 				total = result.total;
 				title = t('memorizations', lang);
+				logger.info('viewStudentInfoConversation: Memorization records fetched', {
+					userId,
+					chatId,
+					studentId: selectedStudent.id,
+					total,
+					recordsCount: records.length,
+					page
+				});
 			} else {
 				const result = await attendanceRepo.readByStudentId(selectedStudent.id, {
 					fromDate,
@@ -184,11 +251,19 @@ export const createViewConversation = (studentRepo: StudentRepo, memorizationRep
 				records = result.records;
 				total = result.total;
 				title = t('attendance', lang);
+				logger.info('viewStudentInfoConversation: Attendance records fetched', {
+					userId,
+					chatId,
+					studentId: selectedStudent.id,
+					total,
+					recordsCount: records.length,
+					page
+				});
 			}
 
 			const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 			const kb = new InlineKeyboard();
-			
+
 			if (page > 0) kb.text(t('previous', lang), 'previous');
 			if (page < totalPages - 1) kb.text(t('next', lang), 'next');
 			kb.row();
@@ -213,7 +288,7 @@ export const createViewConversation = (studentRepo: StudentRepo, memorizationRep
 			const navRes = await conv.wait();
 			cmd = navRes.callbackQuery?.data || null;
 			if (navRes.callbackQuery) await navRes.answerCallbackQuery();
-			
+
 			if (!cmd) continue;
 			if (cmd === 'cancel') {
 				await cancelAndGreet(ctx, navRes);

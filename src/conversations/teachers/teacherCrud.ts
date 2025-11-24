@@ -1,5 +1,5 @@
 import { TeacherRepo } from '../../model/drizzle/repos';
-import type { ButtonStep } from '../../types';
+import type { AnswerKey, ButtonStep } from '../../types';
 import { createTreeConversation } from '../baseConversation';
 import { createStep } from './flows/create';
 import { deleteStep } from './flows/delete';
@@ -8,6 +8,7 @@ import { updateStep } from './flows/update';
 export const teacherCrudConversation = (repo: TeacherRepo) => createTreeConversation<string | null>({
 	entry: {
 		type: 'button',
+		key: 'what_operation' as AnswerKey,
 		prompt: "what_operation",
 		options: [
 			createStep(repo),

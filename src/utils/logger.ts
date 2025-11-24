@@ -1,9 +1,15 @@
 import { existsSync } from 'fs';
 import { mkdir } from 'fs/promises';
-import DailyRotateFile from 'winston-daily-rotate-file';
 import winston from 'winston';
+import DailyRotateFile from 'winston-daily-rotate-file';
 
 const logLevel = process.env.LOG_LEVEL || 'info';
+
+// Format that adds logType metadata to distinguish log sources
+const addLogTypeFormat = (logType: string) => winston.format((info) => {
+	info.logType = logType;
+	return info;
+})();
 
 // Custom format for JSONL (JSON Lines) - each log entry is a single JSON object
 const jsonlFormat = winston.format.combine(
@@ -16,8 +22,9 @@ const jsonlFormat = winston.format.combine(
 const consoleFormat = winston.format.combine(
 	winston.format.colorize(),
 	winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-	winston.format.printf(({ timestamp, level, message, ...meta }) => {
-		let msg = `${timestamp} [${level}]: ${message}`;
+	winston.format.printf(({ timestamp, level, message, logType, ...meta }) => {
+		const typeTag = logType ? `[${logType}] ` : '';
+		let msg = `${timestamp} [${level}]: ${typeTag}${message}`;
 		if (Object.keys(meta).length > 0) {
 			msg += ` ${JSON.stringify(meta)}`;
 		}
@@ -25,19 +32,66 @@ const consoleFormat = winston.format.combine(
 	})
 );
 
-// Daily rotate file transport for JSONL logs
-const dailyRotateFileTransport = new DailyRotateFile({
+// Helper function to create a DailyRotateFile transport with immediate writes
+function createImmediateWriteTransport(config: {
+	filename: string;
+	datePattern: string;
+	maxFiles: string;
+	format: winston.Logform.Format;
+	level?: string;
+}) {
+	const transport = new DailyRotateFile({
+		...config,
+		level: config.level || logLevel,
+		options: {
+			highWaterMark: 1, // Minimal buffer - write after 1 byte
+			flags: 'a', // Append mode
+		},
+	});
+
+	// Override the log method to ensure immediate flush
+	if (transport.log) {
+		const originalLog = transport.log.bind(transport);
+		transport.log = function (info: any, callback: () => void) {
+			originalLog(info, () => {
+				// Access the underlying stream and force flush if possible
+				const stream = (transport as any).stream;
+				if (stream) {
+					// Try to flush the stream
+					if (typeof stream.flush === 'function') {
+						stream.flush();
+					} else if (stream._writableState && stream._writableState.buffer.length > 0) {
+						// Force the stream to process buffered data
+						stream.emit('drain');
+					}
+				}
+				callback();
+			});
+			return transport;
+		};
+	}
+
+	return transport;
+}
+
+// Single daily rotate file transport for all logs with immediate writes
+const dailyRotateFileTransport = createImmediateWriteTransport({
 	filename: 'logs/app-%DATE%.jsonl',
 	datePattern: 'YYYY-MM-DD',
 	maxFiles: '7d', // Keep logs for 7 days
-	format: jsonlFormat,
-	level: logLevel,
+	format: winston.format.combine(
+		addLogTypeFormat('app'),
+		jsonlFormat
+	),
 });
 
 // Create the logger instance
 export const logger = winston.createLogger({
 	level: logLevel,
-	format: jsonlFormat,
+	format: winston.format.combine(
+		addLogTypeFormat('app'),
+		jsonlFormat
+	),
 	defaultMeta: { service: 'mrp' },
 	transports: [
 		// Console transport for development
@@ -45,26 +99,42 @@ export const logger = winston.createLogger({
 			format: consoleFormat,
 			level: logLevel,
 		}),
-		// Daily rotate file transport for JSONL logs
+		// Single daily rotate file transport for all logs (with immediate writes)
 		dailyRotateFileTransport,
 	],
-	// Handle exceptions and rejections
+	// Handle exceptions and rejections - use same file but tag them
 	exceptionHandlers: [
-		new winston.transports.Console({ format: consoleFormat }),
-		new DailyRotateFile({
-			filename: 'logs/exceptions-%DATE%.jsonl',
+		new winston.transports.Console({
+			format: winston.format.combine(
+				addLogTypeFormat('exception'),
+				consoleFormat
+			)
+		}),
+		createImmediateWriteTransport({
+			filename: 'logs/app-%DATE%.jsonl',
 			datePattern: 'YYYY-MM-DD',
 			maxFiles: '7d',
-			format: jsonlFormat,
+			format: winston.format.combine(
+				addLogTypeFormat('exception'),
+				jsonlFormat
+			),
 		}),
 	],
 	rejectionHandlers: [
-		new winston.transports.Console({ format: consoleFormat }),
-		new DailyRotateFile({
-			filename: 'logs/rejections-%DATE%.jsonl',
+		new winston.transports.Console({
+			format: winston.format.combine(
+				addLogTypeFormat('rejection'),
+				consoleFormat
+			)
+		}),
+		createImmediateWriteTransport({
+			filename: 'logs/app-%DATE%.jsonl',
 			datePattern: 'YYYY-MM-DD',
 			maxFiles: '7d',
-			format: jsonlFormat,
+			format: winston.format.combine(
+				addLogTypeFormat('rejection'),
+				jsonlFormat
+			),
 		}),
 	],
 });

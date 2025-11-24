@@ -1,5 +1,6 @@
 import { AttendanceRepo, MemorizationRepo, StudentRepo } from '../../model/drizzle/repos';
 import type { AnswerKey } from '../../types';
+import { logger } from '../../utils/logger.js';
 import { createTreeConversation } from '../baseConversation';
 import { createStep } from './flows/create';
 import { deleteStep } from './flows/delete';
@@ -8,7 +9,7 @@ import { updateStep } from './flows/update';
 export const studentCrudConversation = (repo: StudentRepo, memorizationRepo: MemorizationRepo, attendanceRepo: AttendanceRepo) => createTreeConversation({
 	entry: {
 		type: 'button',
-		key: 'student_crud_entry' as AnswerKey,
+		key: 'what_operation' as AnswerKey,
 		prompt: "what_operation",
 		options: [
 			createStep,
@@ -29,6 +30,10 @@ export const studentCrudConversation = (repo: StudentRepo, memorizationRepo: Mem
 			// Note: cancel is handled by baseConversation before onSelect is called
 			// Message is deleted automatically by baseConversation, no need to edit
 			if (data === "view_info") {
+				logger.info('studentCrudConversation: view_info button selected', {
+					userId: ctx.from?.id,
+					chatId: ctx.chat?.id
+				});
 				// Store a flag to exit and enter view conversation in onSuccess
 				// We'll handle the transition there
 				return;
@@ -36,8 +41,17 @@ export const studentCrudConversation = (repo: StudentRepo, memorizationRepo: Mem
 		},
 	},
 	onSuccess: async (results) => {
+		logger.info('studentCrudConversation onSuccess called', {
+			operation: results["what_operation"],
+			resultsKeys: Object.keys(results),
+			resultsData: results
+		});
 		const op = results["what_operation"];
 		if (op === "view_info") {
+			logger.info('studentCrudConversation: Detected view_info operation, transitioning to viewStudentInfoConversation', {
+				resultsKeys: Object.keys(results),
+				resultsData: results
+			});
 			// Return special object to trigger exit and enter view conversation
 			return { exitAndEnter: 'viewStudentInfoConversation' };
 		}

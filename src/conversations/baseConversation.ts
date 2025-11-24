@@ -1,17 +1,16 @@
 import type { Conversation } from "@grammyjs/conversations";
+import { appendFile } from "fs/promises";
 import { InlineKeyboard } from "grammy";
 import type {
   AnswerKey,
   BaseContext,
   ButtonOption,
-  ButtonStep,
   MyContext,
   Step,
-  TextStep,
-  TreeConversationOptions,
+  TreeConversationOptions
 } from "../types";
 import { cancelAndGreet, sendGreeting } from "../utils/greeting.js";
-import { t, getLang } from "../utils/i18n.js";
+import { getLang, t } from "../utils/i18n.js";
 import { logger } from "../utils/logger.js";
 
 interface InPlaceMeta {
@@ -84,14 +83,14 @@ export class ConversationBuilder<Shape extends Record<string, any> = Record<stri
       error: options.error,
       next: async (val) => {
         if (options.action) await options.action(val);
-        
+
         if (options.next) {
           if (typeof options.next === 'function') {
-             return options.next(val);
+            return options.next(val);
           }
           return options.next;
         }
-        
+
         return nextChain;
       },
     }));
@@ -129,11 +128,11 @@ export class ConversationBuilder<Shape extends Record<string, any> = Record<stri
     prompt: string,
     buttons: (
       | {
-          text: string;
-          data: string;
-          url?: string;
-          next?: ConversationBuilder<any> | Step | null;
-        }
+        text: string;
+        data: string;
+        url?: string;
+        next?: ConversationBuilder<any> | Step | null;
+      }
       | "__row__"
     )[],
     options: {
@@ -147,9 +146,9 @@ export class ConversationBuilder<Shape extends Record<string, any> = Record<stri
         if (b === "__row__") return { text: "", data: "__row__", next: null };
 
         let nextStep: Step | null | (() => Promise<Step | null>);
-        
+
         if (b.next instanceof ConversationBuilder) {
-          nextStep = b.next.compile(); 
+          nextStep = b.next.compile();
         } else if (b.next !== undefined) {
           nextStep = b.next;
         } else {
@@ -267,10 +266,10 @@ export function createTreeConversation<Shape = Record<string, string>>(
     const results: Record<string, string> = {};
     let inPlaceMeta: InPlaceMeta | undefined = undefined;
 
-    logger.info('Conversation started', { 
-      userId, 
-      chatId, 
-      conversationType: opts.entry?.type || 'unknown' 
+    logger.info('Conversation started', {
+      userId,
+      chatId,
+      conversationType: opts.entry?.type || 'unknown'
     });
 
     try {
@@ -278,18 +277,18 @@ export function createTreeConversation<Shape = Record<string, string>>(
 
       while (step) {
         if (step.type === "text") {
-          logger.debug('Conversation step: text input', { 
-            userId, 
-            chatId, 
+          logger.debug('Conversation step: text input', {
+            userId,
+            chatId,
             stepKey: step.key,
-            prompt: step.prompt 
+            prompt: step.prompt
           });
           await ctx.reply(t(step.prompt, getLang(ctx.session), step.promptParams));
-          
+
           let text: string | undefined;
           while (true) {
             const res = await conv.wait();
-            
+
             if (res.message?.text) {
               text = res.message.text;
               // Check if user sent /start to cancel the conversation
@@ -300,46 +299,46 @@ export function createTreeConversation<Shape = Record<string, string>>(
               }
               break;
             } else if (res.callbackQuery) {
-               await res.answerCallbackQuery();
+              await res.answerCallbackQuery();
             } else if (res.message) {
               // User sent a non-text message (photo, video, etc.)
-              logger.debug('Conversation: Non-text message received', { 
-                userId, 
-                chatId, 
-                messageType: res.message?.photo ? 'photo' : res.message?.video ? 'video' : 'other' 
+              logger.debug('Conversation: Non-text message received', {
+                userId,
+                chatId,
+                messageType: res.message?.photo ? 'photo' : res.message?.video ? 'video' : 'other'
               });
               await ctx.reply(t("please_send_text", getLang(ctx.session)));
             }
           }
 
           if (step.validate && !(await step.validate(text))) {
-            logger.debug('Conversation: Validation failed', { 
-              userId, 
-              chatId, 
+            logger.debug('Conversation: Validation failed', {
+              userId,
+              chatId,
               stepKey: step.key,
-              input: text?.substring(0, 50) 
+              input: text?.substring(0, 50)
             });
             if (step.error) await ctx.reply(t(step.error, getLang(ctx.session)));
-            continue; 
+            continue;
           }
 
-          logger.debug('Conversation: Text input received', { 
-            userId, 
-            chatId, 
+          logger.debug('Conversation: Text input received', {
+            userId,
+            chatId,
             stepKey: step.key,
-            inputLength: text?.length 
+            inputLength: text?.length
           });
           results[step.key] = text.trim();
           step = await step.next(text);
-        } 
-        
+        }
+
         else if (step.type === "button") {
-          logger.debug('Conversation step: button menu', { 
-            userId, 
-            chatId, 
+          logger.debug('Conversation step: button menu', {
+            userId,
+            chatId,
             stepKey: step.key,
             prompt: step.prompt,
-            optionCount: step.options.length 
+            optionCount: step.options.length
           });
           const keyboard = new InlineKeyboard();
           for (const opt of step.options) {
@@ -364,10 +363,10 @@ export function createTreeConversation<Shape = Record<string, string>>(
                 { reply_markup: keyboard },
               );
             } catch (e) {
-              logger.warn('Conversation: Failed to edit message in place, sending new message', { 
-                userId, 
-                chatId, 
-                error: e instanceof Error ? e.message : String(e) 
+              logger.warn('Conversation: Failed to edit message in place, sending new message', {
+                userId,
+                chatId,
+                error: e instanceof Error ? e.message : String(e)
               });
               sentMessage = await ctx.reply(messageText, { reply_markup: keyboard });
             }
@@ -376,10 +375,10 @@ export function createTreeConversation<Shape = Record<string, string>>(
           }
 
           if (sentMessage && step.inPlace) {
-             inPlaceMeta = {
-               chatId: sentMessage.chat.id,
-               messageId: sentMessage.message_id,
-             };
+            inPlaceMeta = {
+              chatId: sentMessage.chat.id,
+              messageId: sentMessage.message_id,
+            };
           }
 
           const btnCtx = await conv.wait();
@@ -431,24 +430,24 @@ export function createTreeConversation<Shape = Record<string, string>>(
 
           const opt: ButtonOption<AnswerKey> | undefined = step.options.find((o) => o.data === data);
           if (!opt) {
-              logger.warn('Conversation: Invalid option selected', { 
-                userId, 
-                chatId, 
-                stepKey: step.key,
-                selectedData: data 
-              });
-              await btnCtx.answerCallbackQuery({ text: "⚠️" });
-              continue;
+            logger.warn('Conversation: Invalid option selected', {
+              userId,
+              chatId,
+              stepKey: step.key,
+              selectedData: data
+            });
+            await btnCtx.answerCallbackQuery({ text: "⚠️" });
+            continue;
           }
 
-          logger.debug('Conversation: Button selected', { 
-            userId, 
-            chatId, 
+          logger.debug('Conversation: Button selected', {
+            userId,
+            chatId,
             stepKey: step.key,
-            selectedData: data 
+            selectedData: data
           });
-          await btnCtx.answerCallbackQuery({ 
-              text: `${t("you_selected", getLang(ctx.session))} ${t(opt.text, getLang(ctx.session))}` 
+          await btnCtx.answerCallbackQuery({
+            text: `${t("you_selected", getLang(ctx.session))} ${t(opt.text, getLang(ctx.session))}`
           });
 
           // Delete the button message to prevent ghost buttons
@@ -489,35 +488,58 @@ export function createTreeConversation<Shape = Record<string, string>>(
       const onSuccessStartTime = Date.now();
       const onSuccessResult = await conv.external(() => opts.onSuccess(results as Shape));
       const onSuccessDuration = Date.now() - onSuccessStartTime;
-      
+
       // Check if onSuccess returned a special object indicating we should exit and enter another conversation
       if (onSuccessResult && typeof onSuccessResult === 'object' && 'exitAndEnter' in onSuccessResult) {
-        // Enter the new conversation (the framework will handle exiting the current one)
-        await ctx.conversation.enter(onSuccessResult.exitAndEnter as string);
+        logger.info('Attempting to transition to another conversation', {
+          userId,
+          chatId,
+          targetConversation: onSuccessResult.exitAndEnter
+        });
+        // Exit current conversation and enter the new one using conv context
+        await conv.external(() => ctx.conversation.enter(onSuccessResult.exitAndEnter as string));
         return;
       }
-      
+
       await ctx.reply(t(opts.successMessage, getLang(ctx.session)));
-      
+
       const totalDuration = Date.now() - conversationStartTime;
-      logger.info('Conversation completed successfully', { 
-        userId, 
-        chatId, 
+      logger.info('Conversation completed successfully', {
+        userId,
+        chatId,
         resultsCount: Object.keys(results).length,
         onSuccessDurationMs: onSuccessDuration,
-        totalDurationMs: totalDuration 
+        totalDurationMs: totalDuration
       });
 
     } catch (err) {
       const totalDuration = Date.now() - conversationStartTime;
-      logger.error('Conversation error', { 
-        userId, 
-        chatId, 
+      logger.error('Conversation error', {
+        userId,
+        chatId,
         error: err instanceof Error ? err.message : String(err),
         errorStack: err instanceof Error ? err.stack : undefined,
         results: Object.keys(results),
-        totalDurationMs: totalDuration 
+        totalDurationMs: totalDuration
       });
+
+      // Debug: Write error details to file
+      try {
+        const errorDetails = {
+          timestamp: new Date().toISOString(),
+          userId,
+          chatId,
+          error: err instanceof Error ? err.message : String(err),
+          errorStack: err instanceof Error ? err.stack : undefined,
+          results: Object.keys(results),
+          resultsData: results,
+          totalDurationMs: totalDuration,
+        };
+        await appendFile('debug_error.txt', JSON.stringify(errorDetails, null, 2) + '\n\n');
+      } catch (debugErr) {
+        logger.error('Failed to write debug error file', { error: debugErr });
+      }
+
       await ctx.reply(t(opts.failureMessage, getLang(ctx.session)));
     }
   };
