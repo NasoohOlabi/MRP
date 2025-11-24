@@ -22,7 +22,7 @@ import {
 	viewProfileConversation,
 } from './features/users/conversations.js';
 import { getCurrentUser, requireAdmin, requireTeacher } from './utils/auth.js';
-import { queryLMStudio } from './utils/lmStudio.js';
+import { createSystemPrompt, queryLMStudio, sanitizeTelegramMarkdown } from './utils/lmStudio.js';
 
 // Load environment variables
 dotenv.config();
@@ -67,10 +67,23 @@ export function createBot(): Bot<MyContext> {
 	bot.use(createConversation(assignRoleConversation, 'assign_role'));
 	bot.use(createConversation(listUsersConversation, 'list_users'));
 
+	// Helper function to exit LLM mode
+	function exitLLMMode(ctx: MyContext) {
+		if (ctx.session.inLLMMode) {
+			ctx.session.inLLMMode = false;
+			const lang = getLang(ctx);
+			ctx.reply(t('llm_mode_exited', lang)).catch(err => {
+				logger.error('Error sending LLM mode exit message', { error: err instanceof Error ? err.message : String(err) });
+			});
+		}
+	}
+
 	// Commands
 	bot.command('start', async (ctx) => {
 		const lang = getLang(ctx);
 		logger.info('Command received: /start', { userId: ctx.from?.id, chatId: ctx.chat?.id });
+		// Exit LLM mode if active
+		exitLLMMode(ctx);
 
 		if (!ctx.from?.id) {
 			await ctx.reply(lang === 'ar' ? 'لا يمكن الحصول على معلومات المستخدم.' : 'Cannot get user information.');
@@ -107,17 +120,20 @@ export function createBot(): Bot<MyContext> {
 	// User account commands
 	bot.command('register', async (ctx) => {
 		logger.info('Command received: /register', { userId: ctx.from?.id, chatId: ctx.chat?.id });
+		exitLLMMode(ctx);
 		await ctx.conversation.enter('register_user');
 	});
 
 	bot.command('profile', async (ctx) => {
 		logger.info('Command received: /profile', { userId: ctx.from?.id, chatId: ctx.chat?.id });
+		exitLLMMode(ctx);
 		await ctx.conversation.enter('view_profile');
 	});
 
 	bot.command('myid', async (ctx) => {
 		const lang = getLang(ctx);
 		logger.info('Command received: /myid', { userId: ctx.from?.id, chatId: ctx.chat?.id });
+		exitLLMMode(ctx);
 
 		if (!ctx.from) {
 			await ctx.reply(lang === 'ar' ? 'لا يمكن الحصول على معلومات المستخدم.' : 'Cannot get user information.');
@@ -139,6 +155,10 @@ export function createBot(): Bot<MyContext> {
 	// Admin commands
 	bot.command('assignrole', async (ctx) => {
 		logger.info('Command received: /assignrole', { userId: ctx.from?.id, chatId: ctx.chat?.id });
+		// Exit LLM mode if active
+		if (ctx.session.inLLMMode) {
+			ctx.session.inLLMMode = false;
+		}
 		if (await requireAdmin(ctx)) {
 			await ctx.conversation.enter('assign_role');
 		}
@@ -146,14 +166,32 @@ export function createBot(): Bot<MyContext> {
 
 	bot.command('users', async (ctx) => {
 		logger.info('Command received: /users', { userId: ctx.from?.id, chatId: ctx.chat?.id });
+		// Exit LLM mode if active
+		if (ctx.session.inLLMMode) {
+			ctx.session.inLLMMode = false;
+		}
 		if (await requireAdmin(ctx)) {
 			await ctx.conversation.enter('list_users');
+		}
+	});
+
+	bot.command('tryllm', async (ctx) => {
+		const lang = getLang(ctx);
+		logger.info('Command received: /tryllm', { userId: ctx.from?.id, chatId: ctx.chat?.id });
+		if (await requireAdmin(ctx)) {
+			ctx.session.inLLMMode = true;
+			// Initialize LLM history if not exists
+			if (!ctx.session.lmStudioHistory) {
+				ctx.session.lmStudioHistory = [];
+			}
+			await ctx.reply(t('llm_mode_entered', lang));
 		}
 	});
 
 	// Feature commands (require teacher or admin role)
 	bot.command('students', async (ctx) => {
 		logger.info('Command received: /students', { userId: ctx.from?.id, chatId: ctx.chat?.id });
+		exitLLMMode(ctx);
 		if (await requireTeacher(ctx)) {
 			await ctx.conversation.enter('students');
 		}
@@ -161,6 +199,7 @@ export function createBot(): Bot<MyContext> {
 
 	bot.command('teachers', async (ctx) => {
 		logger.info('Command received: /teachers', { userId: ctx.from?.id, chatId: ctx.chat?.id });
+		exitLLMMode(ctx);
 		if (await requireTeacher(ctx)) {
 			await ctx.conversation.enter('teachers');
 		}
@@ -168,6 +207,7 @@ export function createBot(): Bot<MyContext> {
 
 	bot.command('attendance', async (ctx) => {
 		logger.info('Command received: /attendance', { userId: ctx.from?.id, chatId: ctx.chat?.id });
+		exitLLMMode(ctx);
 		if (await requireTeacher(ctx)) {
 			await ctx.conversation.enter('attendance');
 		}
@@ -175,6 +215,7 @@ export function createBot(): Bot<MyContext> {
 
 	bot.command('memorize', async (ctx) => {
 		logger.info('Command received: /memorize', { userId: ctx.from?.id, chatId: ctx.chat?.id });
+		exitLLMMode(ctx);
 		if (await requireTeacher(ctx)) {
 			await ctx.conversation.enter('memorization');
 		}
@@ -183,6 +224,7 @@ export function createBot(): Bot<MyContext> {
 	bot.command('help', async (ctx) => {
 		const lang = getLang(ctx);
 		logger.info('Command received: /help', { userId: ctx.from?.id, chatId: ctx.chat?.id });
+		exitLLMMode(ctx);
 
 		// Reuse start command logic
 		if (!ctx.from?.id) {
@@ -219,6 +261,7 @@ export function createBot(): Bot<MyContext> {
 	bot.command('myinfo', async (ctx) => {
 		const lang = getLang(ctx);
 		logger.info('Command received: /myinfo', { userId: ctx.from?.id, chatId: ctx.chat?.id });
+		exitLLMMode(ctx);
 
 		if (!ctx.from?.id) {
 			await ctx.reply(lang === 'ar' ? 'لا يمكن الحصول على معلومات المستخدم.' : 'Cannot get user information.');
@@ -265,6 +308,7 @@ export function createBot(): Bot<MyContext> {
 	bot.command('mymemorization', async (ctx) => {
 		const lang = getLang(ctx);
 		logger.info('Command received: /mymemorization', { userId: ctx.from?.id, chatId: ctx.chat?.id });
+		exitLLMMode(ctx);
 
 		if (!ctx.from?.id) {
 			await ctx.reply(lang === 'ar' ? 'لا يمكن الحصول على معلومات المستخدم.' : 'Cannot get user information.');
@@ -304,6 +348,7 @@ export function createBot(): Bot<MyContext> {
 	bot.command('myattendance', async (ctx) => {
 		const lang = getLang(ctx);
 		logger.info('Command received: /myattendance', { userId: ctx.from?.id, chatId: ctx.chat?.id });
+		exitLLMMode(ctx);
 
 		if (!ctx.from?.id) {
 			await ctx.reply(lang === 'ar' ? 'لا يمكن الحصول على معلومات المستخدم.' : 'Cannot get user information.');
@@ -343,6 +388,7 @@ export function createBot(): Bot<MyContext> {
 	bot.command('mygroup', async (ctx) => {
 		const lang = getLang(ctx);
 		logger.info('Command received: /mygroup', { userId: ctx.from?.id, chatId: ctx.chat?.id });
+		exitLLMMode(ctx);
 
 		if (!ctx.from?.id) {
 			await ctx.reply(lang === 'ar' ? 'لا يمكن الحصول على معلومات المستخدم.' : 'Cannot get user information.');
@@ -378,6 +424,7 @@ export function createBot(): Bot<MyContext> {
 	bot.command('myteacher', async (ctx) => {
 		const lang = getLang(ctx);
 		logger.info('Command received: /myteacher', { userId: ctx.from?.id, chatId: ctx.chat?.id });
+		exitLLMMode(ctx);
 
 		if (!ctx.from?.id) {
 			await ctx.reply(lang === 'ar' ? 'لا يمكن الحصول على معلومات المستخدم.' : 'Cannot get user information.');
@@ -435,6 +482,54 @@ export function createBot(): Bot<MyContext> {
 
 		const user = await getCurrentUser(ctx);
 
+		// Check if admin is in LLM mode
+		if (user && user.isActive && user.role === 'admin' && ctx.session.inLLMMode) {
+			try {
+				await ctx.api.sendChatAction(ctx.chat.id, 'typing');
+
+				// Get conversation history if available
+				const history = ctx.session.lmStudioHistory || [];
+
+				// Use comprehensive system prompt (now async)
+				const systemPrompt = await createSystemPrompt(lang as 'en' | 'ar');
+
+				const response = await queryLMStudio(messageText, systemPrompt, {}, history);
+
+				// Sanitize markdown for Telegram compatibility
+				const sanitizedResponse = sanitizeTelegramMarkdown(response);
+
+				// Update conversation history
+				if (!ctx.session.lmStudioHistory) {
+					ctx.session.lmStudioHistory = [];
+				}
+				ctx.session.lmStudioHistory.push(
+					{ role: 'user', content: messageText },
+					{ role: 'assistant', content: sanitizedResponse }
+				);
+				// Keep only last 10 messages
+				if (ctx.session.lmStudioHistory.length > 10) {
+					ctx.session.lmStudioHistory = ctx.session.lmStudioHistory.slice(-10);
+				}
+
+				// Try to send with markdown, fallback to plain text if it fails
+				try {
+					await ctx.reply(sanitizedResponse, { parse_mode: 'Markdown' });
+				} catch (markdownError) {
+					// If markdown parsing fails, send as plain text
+					logger.warn('Markdown parsing failed, sending as plain text', {
+						error: markdownError instanceof Error ? markdownError.message : String(markdownError)
+					});
+					await ctx.reply(sanitizedResponse);
+				}
+			} catch (error) {
+				logger.error('Error processing LLM request', {
+					error: error instanceof Error ? error.message : String(error),
+				});
+				await ctx.reply(t('llm_error', lang));
+			}
+			return;
+		}
+
 		// Only handle free text for unknown users
 		if (!user || !user.isActive) {
 			// Try to identify user with LLM
@@ -444,12 +539,15 @@ export function createBot(): Bot<MyContext> {
 				// Get conversation history if available
 				const history = ctx.session.lmStudioHistory || [];
 
-				// Prepare system prompt for identification
+				// Prepare system prompt for identification and general help
 				const systemPrompt = lang === 'ar'
-					? 'أنت مساعد ذكي يساعد في التعرف على المستخدمين. المستخدم يرسل معلوماته الشخصية (الاسم، رقم الهاتف، إلخ). حاول استخراج: الاسم الكامل، رقم الهاتف (إن وجد)، والمعلومات الأخرى ذات الصلة. أجب بشكل مختصر وواضح.'
-					: 'You are a smart assistant helping to identify users. The user sends their personal information (name, phone number, etc.). Try to extract: full name, phone number (if available), and other relevant information. Respond briefly and clearly.';
+					? 'أنت مساعد ودود ومرحب في بوت MRP. أنت تساعد أولياء الأمور والطلاب والمعلمين.\n\nعندما يخبرك المستخدم عن دوره (مثل "أنا طالب" أو "أنا معلم")، رحب به واشرح له ما يمكنه فعله بطريقة بسيطة وودودة. اسأل أسئلة لفهم ما يحتاجه.\n\nعندما يرسل المستخدم معلوماته الشخصية، حاول استخراج: الاسم الكامل، رقم الهاتف (إن وجد)، والمعلومات الأخرى ذات الصلة.\n\n**مهم:**\n- لا تستخدم جداول markdown - استخدم قوائم بسيطة بنقاط\n- استخدم markdown متوافق مع Telegram: `*عريض*`, `_مائل_`\n- كن محادثاً وودوداً، وليس تقنياً\n- اسأل أسئلة لفهم احتياجات المستخدم'
+					: 'You are a friendly and welcoming assistant for the MRP bot. You help parents, students, and teachers.\n\nWhen a user tells you about their role (like "I\'m a student" or "I\'m a teacher"), welcome them and explain what they can do in a simple, friendly way. Ask questions to understand what they need.\n\nWhen a user sends their personal information, try to extract: full name, phone number (if available), and other relevant information.\n\n**Important:**\n- NEVER use markdown tables - use simple bullet point lists instead\n- Use Telegram-compatible markdown: `*bold*`, `_italic_`\n- Be conversational and friendly, not technical\n- Ask questions to understand the user\'s needs';
 
 				const response = await queryLMStudio(messageText, systemPrompt, {}, history);
+
+				// Sanitize markdown for Telegram compatibility
+				const sanitizedResponse = sanitizeTelegramMarkdown(response);
 
 				// Update conversation history
 				if (!ctx.session.lmStudioHistory) {
@@ -457,11 +555,22 @@ export function createBot(): Bot<MyContext> {
 				}
 				ctx.session.lmStudioHistory.push(
 					{ role: 'user', content: messageText },
-					{ role: 'assistant', content: response }
+					{ role: 'assistant', content: sanitizedResponse }
 				);
 				// Keep only last 10 messages
 				if (ctx.session.lmStudioHistory.length > 10) {
 					ctx.session.lmStudioHistory = ctx.session.lmStudioHistory.slice(-10);
+				}
+
+				// Try to send with markdown, fallback to plain text if it fails
+				try {
+					await ctx.reply(sanitizedResponse, { parse_mode: 'Markdown' });
+				} catch (markdownError) {
+					// If markdown parsing fails, send as plain text
+					logger.warn('Markdown parsing failed, sending as plain text', {
+						error: markdownError instanceof Error ? markdownError.message : String(markdownError)
+					});
+					await ctx.reply(sanitizedResponse);
 				}
 
 				// Try to find matching student or teacher
@@ -515,21 +624,25 @@ export function createBot(): Bot<MyContext> {
 		if (ctx.session.state === 'START') {
 			if (messageText === '/student') {
 				logger.info('Text command received: /student', { userId: ctx.from?.id, chatId: ctx.chat?.id });
+				exitLLMMode(ctx);
 				if (await requireTeacher(ctx)) {
 					await ctx.conversation.enter('students');
 				}
 			} else if (messageText === '/teacher') {
 				logger.info('Text command received: /teacher', { userId: ctx.from?.id, chatId: ctx.chat?.id });
+				exitLLMMode(ctx);
 				if (await requireTeacher(ctx)) {
 					await ctx.conversation.enter('teachers');
 				}
 			} else if (messageText === '/attendance') {
 				logger.info('Text command received: /attendance', { userId: ctx.from?.id, chatId: ctx.chat?.id });
+				exitLLMMode(ctx);
 				if (await requireTeacher(ctx)) {
 					await ctx.conversation.enter('attendance');
 				}
 			} else if (messageText === '/memorize') {
 				logger.info('Text command received: /memorize', { userId: ctx.from?.id, chatId: ctx.chat?.id });
+				exitLLMMode(ctx);
 				if (await requireTeacher(ctx)) {
 					await ctx.conversation.enter('memorization');
 				}

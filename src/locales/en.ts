@@ -85,10 +85,10 @@ export const en = {
     attendance: "Attendance",
     
     // Start command messages
-    start_admin: "Welcome, Admin! Available commands:\n\n**User Management:**\n/register - Register a new user\n/profile - View your profile\n/users - List all users\n/assignrole - Assign role to user\n\n**Student Management:**\n/students - Manage students\n\n**Teacher Management:**\n/teachers - Manage teachers\n\n**Attendance & Memorization:**\n/attendance - Take attendance\n/memorize - Record memorization\n\n**Utilities:**\n/myid - Get your Telegram ID\n/help - Show help",
-    start_student: "Welcome, Student! Available commands:\n\n**View Your Information:**\n/myinfo - View your student information\n/mymemorization - View your memorization records\n/myattendance - View your attendance records\n/mygroup - View your group information\n/myteacher - View your teacher information\n\n**Account:**\n/profile - View your profile",
+    start_admin: "Welcome, Admin! Available commands:\n\n**User Management:**\n/register - Register a new user\n/profile - View your profile\n/users - List all users\n/assignrole - Assign role to user\n\n**Student Management:**\n/students - Manage students\n\n**Teacher Management:**\n/teachers - Manage teachers\n\n**Attendance & Memorization:**\n/attendance - Take attendance\n/memorize - Record memorization\n\n**Utilities:**\n/myid - Get your Telegram ID\n/tryllm - Test LLM (enter LLM mode)\n/help - Show help",
+    start_student: "Welcome! 👋\n\nI'm here to help you check your information and progress. Here's what you can do:\n\n*View Your Information:*\n• /myinfo - See your details\n• /mymemorization - Check what you've memorized\n• /myattendance - See your attendance\n• /mygroup - Find your group\n• /myteacher - See your teacher's info\n\n*Your Account:*\n• /profile - View your profile\n\nWhat would you like to check first?",
     start_teacher: "Welcome, Teacher! Available commands:\n\n**Attendance & Memorization:**\n/attendance - Take attendance for students\n/memorize - Record memorization for students\n\n**View Information:**\n/students - View students (read-only)\n/teachers - View teachers\n\n**Account:**\n/profile - View your profile",
-    start_unknown: "Welcome! You are not registered yet. Please send me your name and information so I can identify you, or use /register to register manually.",
+    start_unknown: "Welcome! 👋\n\nYou're now in the *MRP Bot* – the Telegram bot for managing student/teacher records, attendance and memorization.\n\n*Quick start:*\n• /start – Shows this welcome screen again\n• /help – Lists all available commands\n• /register – Create a user account and choose your role (admin/teacher/student)\n\nIf you need help with any feature, just type the command name or ask me for details. Happy to guide you!",
     student_info_title: "**Your Student Information**",
     student_info_name: "Name: {name}",
     student_info_group: "Group: {group}",
@@ -106,4 +106,8 @@ export const en = {
     not_linked_student: "Your account is not linked to a student record. Please contact an administrator.",
     identifying_user: "I'm trying to identify you. Please wait...",
     could_not_identify: "I couldn't identify you automatically. Please use /register to register manually.",
+    llm_mode_entered: "🤖 LLM Test Mode Activated\n\nYou are now in LLM test mode. Send any message to test the LLM, or enter any command to exit this mode.",
+    llm_mode_exited: "LLM test mode exited.",
+    llm_processing: "Processing your message with LLM...",
+    llm_error: "An error occurred while processing your message with the LLM.",
 };
