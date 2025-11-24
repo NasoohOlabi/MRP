@@ -27,7 +27,7 @@ export const createAttendanceTakingConversation = (attRepo: AttendanceRepo, stud
         methodKb.text(t('by_search', lang), 'by_search').row();
         methodKb.text(t('cancel', lang), 'cancel');
 
-        await ctx.reply(t('attendance_method', lang), { reply_markup: methodKb });
+        const methodMsg = await ctx.reply(t('attendance_method', lang), { reply_markup: methodKb });
 
         let res = await conv.wait();
         const method = res.callbackQuery?.data as AttendanceMethod | 'cancel' | undefined;
@@ -36,6 +36,17 @@ export const createAttendanceTakingConversation = (attRepo: AttendanceRepo, stud
             logger.info('Attendance conversation cancelled', { userId, chatId });
             await cancelAndGreet(ctx, res, 'operation_cancelled');
             return;
+        }
+
+        // Delete the button message to prevent ghost buttons
+        try {
+            await ctx.api.deleteMessage(methodMsg.chat.id, methodMsg.message_id);
+        } catch (err) {
+            logger.warn('Failed to delete method selection message', {
+                userId,
+                chatId,
+                error: err instanceof Error ? err.message : String(err),
+            });
         }
 
         logger.info('Attendance method selected', { userId, chatId, method });
@@ -241,7 +252,7 @@ async function handleByGroup(
     }
     groupKb.text(t('cancel', lang), 'cancel');
 
-    await ctx.reply(t('select_group', lang), { reply_markup: groupKb });
+    const groupMsg = await ctx.reply(t('select_group', lang), { reply_markup: groupKb });
 
     const gRes = await conv.wait();
     const gCmd = gRes.callbackQuery?.data;
@@ -250,6 +261,17 @@ async function handleByGroup(
     if (!gCmd || gCmd === 'cancel') {
         await cancelAndGreet(ctx, gRes, 'operation_cancelled');
         return;
+    }
+
+    // Delete the button message to prevent ghost buttons
+    try {
+        await ctx.api.deleteMessage(groupMsg.chat.id, groupMsg.message_id);
+    } catch (err) {
+        logger.warn('Failed to delete group selection message', {
+            userId: ctx.from?.id,
+            chatId: ctx.chat?.id,
+            error: err instanceof Error ? err.message : String(err),
+        });
     }
 
     const group = gCmd.split(':')[1];

@@ -451,6 +451,22 @@ export function createTreeConversation<Shape = Record<string, string>>(
               text: `${t("you_selected", getLang(ctx.session))} ${t(opt.text, getLang(ctx.session))}` 
           });
 
+          // Delete the button message to prevent ghost buttons
+          try {
+            if (inPlaceMeta) {
+              await ctx.api.deleteMessage(inPlaceMeta.chatId, inPlaceMeta.messageId);
+            } else if (btnCtx.callbackQuery?.message) {
+              const msg = btnCtx.callbackQuery.message;
+              await btnCtx.api.deleteMessage(msg.chat.id, msg.message_id);
+            }
+          } catch (err) {
+            logger.warn('Failed to delete button message', {
+              userId,
+              chatId,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+
           if (step.onSelect) await step.onSelect(data, ctx, btnCtx);
 
           results[step.key] = data;

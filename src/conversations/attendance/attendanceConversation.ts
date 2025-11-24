@@ -8,13 +8,20 @@ import { normalizeEventName } from '../../utils/eventUtils.js';
 export const createAttendanceConversation = (attRepo: AttendanceRepo, studentRepo: StudentRepo) => async (conv: Conversation<BaseContext, MyContext>, ctx: MyContext) => {
   const first = new InlineKeyboard();
   first.text('Mark', 'mark').text('View Today', 'view').text('Undo Today', 'undo').row().text('Cancel', 'cancel');
-  await ctx.reply('Attendance', { reply_markup: first });
+  const firstMsg = await ctx.reply('Attendance', { reply_markup: first });
 
   let res = await conv.wait();
   const action = res.callbackQuery?.data;
   if (res.callbackQuery) await res.answerCallbackQuery();
   if (!action) return;
   if (action === 'cancel') { await cancelAndGreet(ctx, res); return; }
+
+  // Delete the button message to prevent ghost buttons
+  try {
+    await ctx.api.deleteMessage(firstMsg.chat.id, firstMsg.message_id);
+  } catch (err) {
+    // Ignore errors, message may have been deleted already
+  }
 
   const allStudents = await studentRepo.read();
   const groups = Array.from(new Set(allStudents.map(s => s.group))).sort();
@@ -28,17 +35,26 @@ export const createAttendanceConversation = (attRepo: AttendanceRepo, studentRep
     const gKb = new InlineKeyboard();
     for (const g of groups) gKb.text(g, `group:${g}`);
     gKb.row().text('Cancel', 'cancel');
-    await ctx.reply('Select group', { reply_markup: gKb });
+    const groupMsg = await ctx.reply('Select group', { reply_markup: gKb });
     let gRes = await conv.wait();
     const gCmd = gRes.callbackQuery?.data;
     if (gRes.callbackQuery) await gRes.answerCallbackQuery();
     if (!gCmd || gCmd === 'cancel') { await cancelAndGreet(ctx, gRes); return; }
+
+    // Delete the button message to prevent ghost buttons
+    try {
+      await ctx.api.deleteMessage(groupMsg.chat.id, groupMsg.message_id);
+    } catch (err) {
+      // Ignore errors
+    }
+
     const group = gCmd.split(':')[1];
     const pool = allStudents.filter(s => s.group === group);
 
     let page = 0;
     let pageSize = 10;
     let cmd: string | null = null;
+    let messageId: number | undefined;
     do {
       const totalPages = Math.max(1, Math.ceil(pool.length / pageSize));
       const slice = pool.slice(page * pageSize, (page + 1) * pageSize);
@@ -48,11 +64,33 @@ export const createAttendanceConversation = (attRepo: AttendanceRepo, studentRep
       if (page > 0) kb.text('Previous', 'previous');
       if (page < totalPages - 1) kb.text('Next', 'next');
       kb.text('Cancel', 'cancel');
-      await ctx.reply(`Mark present (${event})\n${group} — page ${page + 1}/${totalPages}`, { reply_markup: kb });
+      const text = `Mark present (${event})\n${group} — page ${page + 1}/${totalPages}`;
+      if (messageId) {
+        try {
+          await ctx.api.editMessageText(ctx.chat?.id!, messageId, text, { reply_markup: kb });
+        } catch (err) {
+          const msg = await ctx.reply(text, { reply_markup: kb });
+          messageId = msg.message_id;
+        }
+      } else {
+        const msg = await ctx.reply(text, { reply_markup: kb });
+        messageId = msg.message_id;
+      }
       const r = await conv.wait();
       cmd = r.callbackQuery?.data || null;
       if (!cmd) continue;
-      if (cmd === 'cancel') { await cancelAndGreet(ctx, r); return; }
+      if (cmd === 'cancel') {
+        // Delete the button message before canceling
+        if (messageId) {
+          try {
+            await ctx.api.deleteMessage(ctx.chat?.id!, messageId);
+          } catch (err) {
+            // Ignore errors
+          }
+        }
+        await cancelAndGreet(ctx, r);
+        return;
+      }
       if (cmd === 'next' || cmd === 'previous') { await r.answerCallbackQuery(); }
       if (cmd === 'next') page = Math.min(page + 1, totalPages - 1);
       if (cmd === 'previous') page = Math.max(page - 1, 0);
@@ -75,11 +113,18 @@ export const createAttendanceConversation = (attRepo: AttendanceRepo, studentRep
     gKb.text('All', 'all');
     for (const g of groups) gKb.text(g, `group:${g}`);
     gKb.row().text('Cancel', 'cancel');
-    await ctx.reply('Select group', { reply_markup: gKb });
+    const groupMsg = await ctx.reply('Select group', { reply_markup: gKb });
     const gRes = await conv.wait();
     const gCmd = gRes.callbackQuery?.data;
     if (gRes.callbackQuery) await gRes.answerCallbackQuery();
     if (!gCmd || gCmd === 'cancel') { await cancelAndGreet(ctx, gRes); return; }
+
+    // Delete the button message to prevent ghost buttons
+    try {
+      await ctx.api.deleteMessage(groupMsg.chat.id, groupMsg.message_id);
+    } catch (err) {
+      // Ignore errors
+    }
     const today = new Date();
     const isSameDay = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
     const all = await attRepo.read();
@@ -105,10 +150,18 @@ export const createAttendanceConversation = (attRepo: AttendanceRepo, studentRep
     const gKb = new InlineKeyboard();
     for (const g of groups) gKb.text(g, `group:${g}`);
     gKb.row().text('Cancel', 'cancel');
-    await ctx.reply('Select group', { reply_markup: gKb });
+    const groupMsg = await ctx.reply('Select group', { reply_markup: gKb });
     const gRes = await conv.wait();
     const gCmd = gRes.callbackQuery?.data;
     if (!gCmd || gCmd === 'cancel') { await cancelAndGreet(ctx, gRes); return; }
+
+    // Delete the button message to prevent ghost buttons
+    try {
+      await ctx.api.deleteMessage(groupMsg.chat.id, groupMsg.message_id);
+    } catch (err) {
+      // Ignore errors
+    }
+
     const group = gCmd.split(':')[1];
     const today = new Date();
     const isSameDay = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
@@ -121,6 +174,7 @@ export const createAttendanceConversation = (attRepo: AttendanceRepo, studentRep
     let page = 0;
     let pageSize = 10;
     let cmd: string | null = null;
+    let messageId: number | undefined;
     do {
       const totalPages = Math.max(1, Math.ceil(pool.length / pageSize));
       const slice = pool.slice(page * pageSize, (page + 1) * pageSize);
@@ -130,11 +184,33 @@ export const createAttendanceConversation = (attRepo: AttendanceRepo, studentRep
       if (page > 0) kb.text('Previous', 'previous');
       if (page < totalPages - 1) kb.text('Next', 'next');
       kb.text('Cancel', 'cancel');
-      await ctx.reply(`Undo present (${event})\n${group} — page ${page + 1}/${totalPages}`, { reply_markup: kb });
+      const text = `Undo present (${event})\n${group} — page ${page + 1}/${totalPages}`;
+      if (messageId) {
+        try {
+          await ctx.api.editMessageText(ctx.chat?.id!, messageId, text, { reply_markup: kb });
+        } catch (err) {
+          const msg = await ctx.reply(text, { reply_markup: kb });
+          messageId = msg.message_id;
+        }
+      } else {
+        const msg = await ctx.reply(text, { reply_markup: kb });
+        messageId = msg.message_id;
+      }
       const r = await conv.wait();
       cmd = r.callbackQuery?.data || null;
       if (!cmd) continue;
-      if (cmd === 'cancel') { await cancelAndGreet(ctx, r); return; }
+      if (cmd === 'cancel') {
+        // Delete the button message before canceling
+        if (messageId) {
+          try {
+            await ctx.api.deleteMessage(ctx.chat?.id!, messageId);
+          } catch (err) {
+            // Ignore errors
+          }
+        }
+        await cancelAndGreet(ctx, r);
+        return;
+      }
       if (cmd === 'next' || cmd === 'previous') { await r.answerCallbackQuery(); }
       if (cmd === 'next') page = Math.min(page + 1, totalPages - 1);
       if (cmd === 'previous') page = Math.max(page - 1, 0);

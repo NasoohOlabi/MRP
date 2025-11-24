@@ -27,13 +27,11 @@ export const studentCrudConversation = (repo: StudentRepo, memorizationRepo: Mem
 		],
 		onSelect: async (data, ctx, res) => {
 			// Note: cancel is handled by baseConversation before onSelect is called
+			// Message is deleted automatically by baseConversation, no need to edit
 			if (data === "view_info") {
 				// Store a flag to exit and enter view conversation in onSuccess
 				// We'll handle the transition there
 				return;
-			}
-			if (data !== 'cancel') {
-				await res.editMessageText(`you_selected ${data.toUpperCase()}`);
 			}
 		},
 	},

@@ -21,9 +21,7 @@ export const teacherCrudConversation = (repo: TeacherRepo) => createTreeConversa
 		],
 		onSelect: async (data, ctx, res) => {
 			// Note: cancel is handled by baseConversation before onSelect is called
-			if (data !== 'cancel') {
-				await res.editMessageText(`you_selected ${data.toUpperCase()}`);
-			}
+			// Message is deleted automatically by baseConversation, no need to edit
 		},
 	} as ButtonStep,
 	onSuccess: async (results) => {

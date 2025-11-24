@@ -12,10 +12,17 @@ export const createTeacherQuickAttendance = (
 ) => async (conv: Conversation<BaseContext, MyContext>, ctx: MyContext) => {
   const startKb = new InlineKeyboard();
   startKb.text('Class', 'ev:Class').text('Custom', 'ev:custom').row().text('Cancel', 'cancel');
-  await ctx.reply('Choose event', { reply_markup: startKb });
+  const startMsg = await ctx.reply('Choose event', { reply_markup: startKb });
   let res = await conv.wait();
   const ev = res.callbackQuery?.data;
   if (!ev || ev === 'cancel') { await cancelAndGreet(ctx, res); return; }
+  
+  // Delete the button message to prevent ghost buttons
+  try {
+    await ctx.api.deleteMessage(startMsg.chat.id, startMsg.message_id);
+  } catch (err) {
+    // Ignore errors, message may have been deleted already
+  }
   let event = ev.startsWith('ev:') && ev !== 'ev:custom' ? ev.split(':')[1] : '';
   if (ev === 'ev:custom') {
     await ctx.reply('Type event name');
@@ -41,6 +48,7 @@ export const createTeacherQuickAttendance = (
   let page = 0;
   let size = 10;
   let cmd: string | null = null;
+  let messageId: number | undefined;
   do {
     const totalPages = Math.max(1, Math.ceil(students.length / size));
     const slice = students.slice(page * size, (page + 1) * size);
@@ -50,12 +58,46 @@ export const createTeacherQuickAttendance = (
     if (page > 0) kb.text('Previous', 'previous');
     if (page < totalPages - 1) kb.text('Next', 'next');
     kb.text('Finish', 'finish').text('Cancel', 'cancel');
-    await ctx.reply(`${event} — ${group} — ${marked.size}/${students.length}`, { reply_markup: kb });
+    const text = `${event} — ${group} — ${marked.size}/${students.length}`;
+    if (messageId) {
+      try {
+        await ctx.api.editMessageText(ctx.chat?.id!, messageId, text, { reply_markup: kb });
+      } catch (err) {
+        // If edit fails, send new message
+        const msg = await ctx.reply(text, { reply_markup: kb });
+        messageId = msg.message_id;
+      }
+    } else {
+      const msg = await ctx.reply(text, { reply_markup: kb });
+      messageId = msg.message_id;
+    }
     const r = await conv.wait();
     cmd = r.callbackQuery?.data || null;
     if (!cmd) continue;
-    if (cmd === 'cancel') { await cancelAndGreet(ctx, r); return; }
-    if (cmd === 'finish') { await ctx.reply(`Saved ${marked.size}`); return; }
+    if (cmd === 'cancel') {
+      // Delete the button message before canceling
+      if (messageId) {
+        try {
+          await ctx.api.deleteMessage(ctx.chat?.id!, messageId);
+        } catch (err) {
+          // Ignore errors
+        }
+      }
+      await cancelAndGreet(ctx, r);
+      return;
+    }
+    if (cmd === 'finish') {
+      // Delete the button message before finishing
+      if (messageId) {
+        try {
+          await ctx.api.deleteMessage(ctx.chat?.id!, messageId);
+        } catch (err) {
+          // Ignore errors
+        }
+      }
+      await ctx.reply(`Saved ${marked.size}`);
+      return;
+    }
     if (cmd === 'next') page = Math.min(page + 1, totalPages - 1);
     if (cmd === 'previous') page = Math.max(page - 1, 0);
     if (cmd.startsWith('t:')) {
