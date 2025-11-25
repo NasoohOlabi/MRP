@@ -16,7 +16,7 @@ export async function viewStudentConversation(
 ) {
   const lang = getLang(ctx);
 
-  await ctx.reply("Enter the student name to search:");
+  await ctx.reply(t("enter_student_name_search", lang));
   let response = await conversation.wait();
   const searchQuery = response.message?.text?.trim();
 
@@ -60,15 +60,15 @@ export async function viewStudentConversation(
   }
   // Prepare base student info
   let message = `
-**Student Information**
+${t("student_info_title", lang)}
 
-ID: ${student.id}
-Name: ${student.firstName} ${student.lastName}
-Birth Year: ${student.birthYear}
-Group: ${student.group || "N/A"}
-Phone: ${student.phone || "N/A"}
-Father's Phone: ${student.fatherPhone || "N/A"}
-Mother's Phone: ${student.motherPhone || "N/A"}
+${t("student_info_id", lang)}: ${student.id}
+${t("student_info_name", lang)}: ${student.firstName} ${student.lastName}
+${t("student_info_birth_year", lang)}: ${student.birthYear}
+${t("student_info_group", lang)}: ${student.group || t("no_value", lang)}
+${t("student_info_phone", lang)}: ${student.phone || t("no_value", lang)}
+${t("student_info_father_phone", lang)}: ${student.fatherPhone || t("no_value", lang)}
+${t("student_info_mother_phone", lang)}: ${student.motherPhone || t("no_value", lang)}
   `.trim();
 
   // Attendance summary
@@ -85,16 +85,18 @@ Mother's Phone: ${student.motherPhone || "N/A"}
         if (!byEvent[eventName]) byEvent[eventName] = [];
         byEvent[eventName].push(new Date(rec.createdAt));
       }
-      message += `\n\n**Attendance**\n\n`;
+      message += `\n\n${t("attendance_summary", lang)}\n\n`;
       const sorted = Object.entries(byEvent).sort(([a], [b]) => a.localeCompare(b));
       for (const [eventName, dates] of sorted) {
-        message += `**${eventName}**: ${dates.length} ${dates.length === 1 ? "time" : "times"}\n`;
+        const timeKey =
+          dates.length === 1 ? "attendance_times_single" : "attendance_times_multiple";
+        message += `**${eventName}**: ${dates.length} ${t(timeKey, lang)}\n`;
         const recentDates = dates
           .slice()
           .sort((a, b) => b.getTime() - a.getTime())
           .slice(0, 5)
           .map((d) => d.toISOString().split("T")[0]);
-        message += `Recent: ${recentDates.join(", ")}\n\n`;
+        message += `${t("recent_label", lang)}: ${recentDates.join(", ")}\n\n`;
       }
     }
   } catch {
@@ -109,16 +111,24 @@ Mother's Phone: ${student.motherPhone || "N/A"}
     const totalMemorization = memorizationResult.total;
     const memorizationRecords = memorizationResult.records;
     if (memorizationRecords.length > 0 || totalMemorization > 0) {
-      message += `\n**Memorization Records**\n\nTotal: ${totalMemorization}\n\n`;
+      message += `\n${t("memorization_records_title", lang)}\n\n`;
+      const totalLabel = t("memorization_total_label", lang);
+      message += `${totalLabel}: ${totalMemorization}\n\n`;
       const recentMemorizations = memorizationRecords
         .slice(0, 20)
-        .map((m) => `Page ${m.page} - ${new Date(m.createdAt).toLocaleDateString(lang === "ar" ? "ar-SA" : "en-US")}`)
+        .map((m) => {
+          const date = new Date(m.createdAt).toLocaleDateString(lang === "ar" ? "ar-SA" : "en-US");
+          return t("memorization_recent_format", lang, { page: `${m.page}`, date });
+        })
         .join("\n");
       if (recentMemorizations) {
         message += recentMemorizations + "\n";
       }
       if (totalMemorization > 20) {
-        message += `\n... and ${totalMemorization - 20} more records\n`;
+        message += `\n${t("memorization_more_records", lang).replace(
+          "{count}",
+          `${totalMemorization - 20}`
+        )}\n`;
       }
     }
   } catch {

@@ -16,7 +16,7 @@ export async function deleteStudentConversation(
 ) {
   const lang = getLang(ctx);
 
-  await ctx.reply("Enter the student name to search:");
+  await ctx.reply(t("enter_student_name_search", lang));
   let response = await conversation.wait();
   const searchQuery = response.message?.text?.trim();
 
@@ -60,11 +60,14 @@ export async function deleteStudentConversation(
   }
 
   const confirmKeyboard = new InlineKeyboard()
-    .text("Yes, delete", "confirm_delete")
+    .text(t("confirm_delete_yes", lang), "confirm_delete")
     .text(t("cancel", lang), "cancel");
 
   await ctx.reply(
-    `Are you sure you want to delete ${student.firstName} ${student.lastName}?`,
+    t("confirm_delete_prompt", lang).replace(
+      "{name}",
+      `${student.firstName} ${student.lastName}`
+    ),
     { reply_markup: confirmKeyboard }
   );
 

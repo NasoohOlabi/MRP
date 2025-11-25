@@ -88,7 +88,7 @@ async function markAttendanceConversation(conversation: Conversation<BaseContext
 	}
 	
 	// Search for student
-	await ctx.reply('Enter student name to mark attendance:');
+	await ctx.reply(t('enter_student_name_mark_attendance', lang));
 	response = await conversation.wait();
 	const searchQuery = response.message?.text?.trim();
 	
@@ -206,19 +206,30 @@ async function browseByEventConversation(conversation: Conversation<BaseContext,
 		let message = `**${t('attendance_for', lang).replace('{event}', event)}**\n\n`;
 		
 		for (const [date, attendances] of Object.entries(attendanceByDate).sort().reverse()) {
-			message += `**${date}** (${attendances.length} ${attendances.length === 1 ? 'student' : 'students'})\n`;
+			const studentLabel =
+				attendances.length === 1
+					? t('student_label_single', lang)
+					: t('student_label_plural', lang);
+			message += `**${date}** (${attendances.length} ${studentLabel})\n`;
 			
 			// Get student names
 			for (const att of attendances.slice(0, 20)) {
 				const student = await studentService.getById(att.studentId);
 				if (student) {
-					const time = new Date(att.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+				const timeLocale = lang === 'ar' ? 'ar-SA' : 'en-US';
+				const time = new Date(att.createdAt).toLocaleTimeString(timeLocale, {
+					hour: '2-digit',
+					minute: '2-digit',
+				});
 					message += `• ${student.firstName} ${student.lastName}${student.group ? ` (${student.group})` : ''} - ${time}\n`;
 				}
 			}
 			
 			if (attendances.length > 20) {
-				message += `... and ${attendances.length - 20} more\n`;
+				message += `${t('attendance_more_records', lang).replace(
+					'{count}',
+					`${attendances.length - 20}`
+				)}\n`;
 			}
 			
 			message += '\n';
@@ -235,7 +246,7 @@ async function browseByStudentConversation(conversation: Conversation<BaseContex
 	const lang = getLang(ctx);
 	
 	// Search for student
-	await ctx.reply('Enter student name to view attendance:');
+	await ctx.reply(t('enter_student_name_view_attendance', lang));
 	let response = await conversation.wait();
 	const searchQuery = response.message?.text?.trim();
 	

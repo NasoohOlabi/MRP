@@ -1,7 +1,7 @@
 import type { Conversation } from "@grammyjs/conversations";
 import type { BaseContext, MyContext } from "../../../../types.js";
 import { t } from "../../../../utils/i18n.js";
-import { studentService, getLang } from "../helpers.js";
+import { getLang, studentService } from "../helpers.js";
 
 export async function createStudentConversation(conversation: Conversation<BaseContext, MyContext>, ctx: MyContext) {
   const lang = getLang(ctx);
@@ -30,7 +30,7 @@ export async function createStudentConversation(conversation: Conversation<BaseC
     if (text && /^\d{4}$/.test(text)) {
       birthYear = parseInt(text);
     } else {
-      await ctx.reply("Invalid year format. Please enter a 4-digit year (e.g., 2010).");
+      await ctx.reply(t("invalid_year_format", lang));
     }
   }
 

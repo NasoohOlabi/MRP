@@ -362,7 +362,11 @@ async function handleStudentGroupOrTeacher(ctx: MyContext, type: "group" | "teac
   exitLLMMode(ctx);
 
   if (!ctx.from?.id) {
-    await ctx.reply(lang === "ar" ? "لا يمكن الحصول على معلومات المستخدم." : "Cannot get user information.");
+    await ctx.reply(t("cannot_get_user_info", lang));
+    return;
+  }
+  if (!ctx.from?.id) {
+    await ctx.reply(t("cannot_get_user_info", lang));
     return;
   }
 

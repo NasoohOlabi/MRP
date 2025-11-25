@@ -16,7 +16,7 @@ export async function updateStudentConversation(
 ) {
   const lang = getLang(ctx);
 
-  await ctx.reply("Enter the student name to search:");
+  await ctx.reply(t("enter_student_name_search", lang));
   let response = await conversation.wait();
   const searchQuery = response.message?.text?.trim();
 
@@ -63,30 +63,30 @@ export async function updateStudentConversation(
 
   while (true) {
     const currentInfo = `
-**Current Student Information:**
-Name: ${student.firstName} ${student.lastName}
-Group: ${student.group || "None"}
-Phone: ${student.phone || "None"}
-Father's Phone: ${student.fatherPhone || "None"}
-Mother's Phone: ${student.motherPhone || "None"}
+${t("current_student_info", lang)}
+${t("student_info_name", lang)}: ${student.firstName} ${student.lastName}
+${t("student_info_group", lang)}: ${student.group || t("no_value", lang)}
+${t("student_info_phone", lang)}: ${student.phone || t("no_value", lang)}
+${t("student_info_father_phone", lang)}: ${student.fatherPhone || t("no_value", lang)}
+${t("student_info_mother_phone", lang)}: ${student.motherPhone || t("no_value", lang)}
 
-Select a field to update:
+${t("select_field_to_update", lang)}
     `.trim();
 
     const fieldKeyboard = new InlineKeyboard()
-      .text("First Name", "field_firstName")
+      .text(t("field_first_name", lang), "field_firstName")
       .row()
-      .text("Last Name", "field_lastName")
+      .text(t("field_last_name", lang), "field_lastName")
       .row()
-      .text("Group", "field_group")
+      .text(t("field_group", lang), "field_group")
       .row()
-      .text("Phone", "field_phone")
+      .text(t("field_phone", lang), "field_phone")
       .row()
-      .text("Father's Phone", "field_fatherPhone")
+      .text(t("field_father_phone", lang), "field_fatherPhone")
       .row()
-      .text("Mother's Phone", "field_motherPhone")
+      .text(t("field_mother_phone", lang), "field_motherPhone")
       .row()
-      .text("Finish & Save", "field_finish")
+      .text(t("field_finish_save", lang), "field_finish")
       .row()
       .text(t("cancel", lang), "field_cancel");
 
