@@ -19,7 +19,7 @@ export function registerCommands(bot: Bot<MyContext>): void {
     exitLLMMode(ctx);
 
     if (!ctx.from?.id) {
-      await ctx.reply(lang === "ar" ? "لا يمكن الحصول على معلومات المستخدم." : "Cannot get user information.");
+      await ctx.reply(t("cannot_get_user_info", lang));
       return;
     }
 
@@ -172,7 +172,7 @@ export function registerCommands(bot: Bot<MyContext>): void {
     exitLLMMode(ctx);
 
     if (!ctx.from?.id) {
-      await ctx.reply(lang === "ar" ? "لا يمكن الحصول على معلومات المستخدم." : "Cannot get user information.");
+      await ctx.reply(t("cannot_get_user_info", lang));
       return;
     }
 
@@ -207,17 +207,13 @@ export function registerCommands(bot: Bot<MyContext>): void {
     exitLLMMode(ctx);
 
     if (!ctx.from?.id) {
-      await ctx.reply(lang === "ar" ? "لا يمكن الحصول على معلومات المستخدم." : "Cannot get user information.");
+      await ctx.reply(t("cannot_get_user_info", lang));
       return;
     }
 
     const user = await getCurrentUser(ctx);
     if (!user || user.role !== "student" || !user.isActive) {
-      await ctx.reply(
-        lang === "ar"
-          ? "ليس لديك صلاحية للوصول إلى هذا الأمر."
-          : "You don't have permission to access this command."
-      );
+      await ctx.reply(t("permission_denied", lang));
       return;
     }
 
@@ -257,17 +253,13 @@ export function registerCommands(bot: Bot<MyContext>): void {
     exitLLMMode(ctx);
 
     if (!ctx.from?.id) {
-      await ctx.reply(lang === "ar" ? "لا يمكن الحصول على معلومات المستخدم." : "Cannot get user information.");
+      await ctx.reply(t("cannot_get_user_info", lang));
       return;
     }
 
     const user = await getCurrentUser(ctx);
     if (!user || user.role !== "student" || !user.isActive) {
-      await ctx.reply(
-        lang === "ar"
-          ? "ليس لديك صلاحية للوصول إلى هذا الأمر."
-          : "You don't have permission to access this command."
-      );
+      await ctx.reply(t("permission_denied", lang));
       return;
     }
 
@@ -305,17 +297,13 @@ export function registerCommands(bot: Bot<MyContext>): void {
     exitLLMMode(ctx);
 
     if (!ctx.from?.id) {
-      await ctx.reply(lang === "ar" ? "لا يمكن الحصول على معلومات المستخدم." : "Cannot get user information.");
+      await ctx.reply(t("cannot_get_user_info", lang));
       return;
     }
 
     const user = await getCurrentUser(ctx);
     if (!user || user.role !== "student" || !user.isActive) {
-      await ctx.reply(
-        lang === "ar"
-          ? "ليس لديك صلاحية للوصول إلى هذا الأمر."
-          : "You don't have permission to access this command."
-      );
+      await ctx.reply(t("permission_denied", lang));
       return;
     }
 
@@ -365,18 +353,10 @@ async function handleStudentGroupOrTeacher(ctx: MyContext, type: "group" | "teac
     await ctx.reply(t("cannot_get_user_info", lang));
     return;
   }
-  if (!ctx.from?.id) {
-    await ctx.reply(t("cannot_get_user_info", lang));
-    return;
-  }
 
   const user = await getCurrentUser(ctx);
   if (!user || user.role !== "student" || !user.isActive) {
-    await ctx.reply(
-      lang === "ar"
-        ? "ليس لديك صلاحية للوصول إلى هذا الأمر."
-        : "You don't have permission to access this command."
-    );
+    await ctx.reply(t("permission_denied", lang));
     return;
   }
 

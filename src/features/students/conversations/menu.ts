@@ -70,11 +70,7 @@ export async function studentMenuConversation(
 	}
 
 	if (isTeacherOnly && action !== "view_info") {
-		await ctx.reply(
-			lang === "ar"
-				? "ليس لديك صلاحية للوصول إلى هذه العملية."
-				: "You don't have permission to access this operation."
-		);
+		await ctx.reply(t("permission_denied_operation", lang));
 		return;
 	}
 

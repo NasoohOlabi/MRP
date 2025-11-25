@@ -1,6 +1,7 @@
 // Authentication and authorization utilities
 import type { MyContext } from '../types.js';
 import { UserService, type UserRole } from '../features/users/model.js';
+import { t } from './i18n.js';
 
 const userService = new UserService();
 
@@ -23,17 +24,13 @@ export async function requireAuth(ctx: MyContext): Promise<boolean> {
 	
 	if (!user) {
 		const lang = ctx.session?.language || 'en';
-		await ctx.reply(lang === 'ar' 
-			? 'يجب تسجيل الدخول أولاً. استخدم /register للتسجيل.'
-			: 'You must be logged in first. Use /register to register.');
+		await ctx.reply(t('auth_login_required', lang));
 		return false;
 	}
 
 	if (!user.isActive) {
 		const lang = ctx.session?.language || 'en';
-		await ctx.reply(lang === 'ar'
-			? 'حسابك غير نشط. يرجى الاتصال بالمسؤول.'
-			: 'Your account is inactive. Please contact an administrator.');
+		await ctx.reply(t('auth_account_inactive', lang));
 		return false;
 	}
 
@@ -59,9 +56,7 @@ export async function requireRole(ctx: MyContext, requiredRole: UserRole | UserR
 	if (!userService.hasRole(user, requiredRole)) {
 		const lang = ctx.session?.language || 'en';
 		const roleText = Array.isArray(requiredRole) ? requiredRole.join(' or ') : requiredRole;
-		await ctx.reply(lang === 'ar'
-			? `ليس لديك الصلاحية للوصول إلى هذا الأمر. المطلوب: ${roleText}`
-			: `You don't have permission to access this command. Required role: ${roleText}`);
+		await ctx.reply(t('permission_denied_with_role', lang).replace('{role}', roleText));
 		return false;
 	}
 
