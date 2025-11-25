@@ -10,6 +10,7 @@ import {
   studentService,
   teacherService,
 } from "../services.js";
+import { getRecentParentInquiries, type ParentInquiry } from "../../features/parents/parentInquiryStore.js";
 
 export function registerCommands(bot: Bot<MyContext>): void {
   bot.command("start", async (ctx) => {
@@ -44,6 +45,8 @@ export function registerCommands(bot: Bot<MyContext>): void {
       await ctx.reply(t("start_student", lang), { parse_mode: "Markdown" });
     } else if (user.role === "teacher") {
       await ctx.reply(t("start_teacher", lang), { parse_mode: "Markdown" });
+    } else if (user.role === "parent") {
+      await ctx.reply(t("start_parent", lang), { parse_mode: "Markdown" });
     } else {
       await ctx.reply(t("start_unknown", lang));
     }
@@ -102,6 +105,23 @@ export function registerCommands(bot: Bot<MyContext>): void {
     if (await requireAdmin(ctx)) {
       await ctx.conversation.enter("list_users");
     }
+  });
+
+  bot.command("parentleads", async (ctx) => {
+    const lang = getLang(ctx);
+    logger.info("Command received: /parentleads", { userId: ctx.from?.id, chatId: ctx.chat?.id });
+    exitLLMMode(ctx);
+    if (!(await requireAdmin(ctx))) {
+      return;
+    }
+    const inquiries = await getRecentParentInquiries(10);
+    if (inquiries.length === 0) {
+      await ctx.reply(t("parent_inquiry_list_empty", lang));
+      return;
+    }
+    const header = t("parent_inquiry_list_title", lang);
+    const lines = inquiries.map((inquiry, index) => formatParentInquiryEntry(inquiry, index, lang)).join("\n\n");
+    await ctx.reply(`${header}\n\n${lines}`);
   });
 
   bot.command("tryllm", async (ctx) => {
@@ -180,6 +200,8 @@ export function registerCommands(bot: Bot<MyContext>): void {
       await ctx.reply(t("start_student", lang), { parse_mode: "Markdown" });
     } else if (user.role === "teacher") {
       await ctx.reply(t("start_teacher", lang), { parse_mode: "Markdown" });
+    } else if (user.role === "parent") {
+      await ctx.reply(t("start_parent", lang), { parse_mode: "Markdown" });
     } else {
       await ctx.reply(t("start_unknown", lang));
     }
@@ -388,5 +410,15 @@ async function handleStudentGroupOrTeacher(ctx: MyContext, type: "group" | "teac
   }
   const message = lang === "ar" ? `**معلمك:** ${teacherName}` : `**Your Teacher:** ${teacherName}`;
   await ctx.reply(message, { parse_mode: "Markdown" });
+}
+
+function formatParentInquiryEntry(inquiry: ParentInquiry, index: number, lang: string): string {
+  const date = inquiry.createdAt ? new Date(inquiry.createdAt) : new Date();
+  const dateText = formatDate(date, lang);
+  const missing = lang === "ar" ? "—" : "—";
+  if (lang === "ar") {
+    return `${index + 1}.\n• ولي الأمر: ${inquiry.parentName}\n• التواصل: ${inquiry.contact || missing}\n• الطفل: ${inquiry.childName}\n• العمر/الصف: ${inquiry.childAgeOrGrade || missing}\n• البرنامج: ${inquiry.programPreference || missing}\n• ملاحظات: ${inquiry.notes || missing}\n• التاريخ: ${dateText}`;
+  }
+  return `${index + 1}.\n• Parent: ${inquiry.parentName}\n• Contact: ${inquiry.contact || missing}\n• Child: ${inquiry.childName}\n• Age/Grade: ${inquiry.childAgeOrGrade || missing}\n• Program: ${inquiry.programPreference || missing}\n• Notes: ${inquiry.notes || missing}\n• Received: ${dateText}`;
 }
 

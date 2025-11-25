@@ -5,6 +5,8 @@ import type { BaseContext, MyContext } from '../../types.js';
 import { t } from '../../utils/i18n.js';
 import { UserService, type UserRole } from './model.js';
 import { requireAdmin } from '../../utils/auth.js';
+import { saveParentInquiry, type ParentInquiryInput } from '../parents/parentInquiryStore.js';
+import { logger } from '../../utils/logger.js';
 
 const userService = new UserService();
 
@@ -13,11 +15,55 @@ function getLang(ctx: MyContext): string {
 	return ctx.session?.language || 'en';
 }
 
+const ROLE_LABELS = {
+	en: {
+		admin: 'Admin',
+		teacher: 'Teacher',
+		student: 'Student',
+		parent: 'Parent',
+	},
+	ar: {
+		admin: 'مدير',
+		teacher: 'معلم',
+		student: 'طالب',
+		parent: 'ولي أمر',
+	},
+} as const;
+
+function getRoleLabel(role: UserRole, lang: string): string {
+	const labels = lang === 'ar' ? ROLE_LABELS.ar : ROLE_LABELS.en;
+	return labels[role] ?? role;
+}
+
 /**
  * Register a new user account
  */
 export async function registerUserConversation(conversation: Conversation<BaseContext, MyContext>, ctx: MyContext) {
 	const lang = getLang(ctx);
+	const askText = async (
+		promptEn: string,
+		promptAr: string,
+		allowSkip = false
+	): Promise<string | null> => {
+		await ctx.reply(lang === 'ar' ? promptAr : promptEn);
+		while (true) {
+			const answerCtx = await conversation.wait();
+			const text = answerCtx.message?.text?.trim();
+			if (!text) {
+				await ctx.reply(t('please_send_text', lang));
+				continue;
+			}
+			if (
+				allowSkip &&
+				(text === '-' ||
+					text.toLowerCase() === 'skip' ||
+					text.toLowerCase() === '/skip')
+			) {
+				return null;
+			}
+			return text;
+		}
+	};
 
 	// Check if user already exists
 	if (!ctx.from?.id) {
@@ -39,14 +85,15 @@ export async function registerUserConversation(conversation: Conversation<BaseCo
 
 	// Ask for role
 	const roleKeyboard = new InlineKeyboard()
+		.text('Parent', 'role_parent').row()
 		.text('Student', 'role_student').row()
 		.text('Teacher', 'role_teacher').row()
 		.text(t('cancel', lang), 'cancel');
 
 	await ctx.reply(
 		lang === 'ar'
-			? 'اختر دورك:\n\nطالب - للطلاب\nمعلم - للمعلمين'
-			: 'Select your role:\n\nStudent - For students\nTeacher - For teachers',
+			? 'اختر دورك:\n\nولي الأمر - لأولياء الأمور\nطالب - للطلاب\nمعلم - للمعلمين'
+			: 'Select your role:\n\nParent - For parents/guardians\nStudent - For students\nTeacher - For teachers',
 		{ reply_markup: roleKeyboard }
 	);
 
@@ -76,17 +123,58 @@ export async function registerUserConversation(conversation: Conversation<BaseCo
 	let role: UserRole = 'student';
 	if (roleData === 'role_teacher') {
 		role = 'teacher';
+	} else if (roleData === 'role_parent') {
+		role = 'parent';
 	}
 
-	// Ask for phone (optional)
-	await ctx.reply(
-		lang === 'ar'
-			? 'أدخل رقم هاتفك (اختياري، أو أرسل "-" للتخطي):'
-			: 'Enter your phone number (optional, or send "-" to skip):'
+	const phoneValue = await askText(
+		'Enter your phone number (optional, or send "-" to skip):',
+		'أدخل رقم هاتفك (اختياري، أو أرسل "-" للتخطي):',
+		true
 	);
-	const phoneResponse = await conversation.wait();
-	const phone = phoneResponse.message?.text?.trim();
-	const phoneValue = phone && phone !== '-' ? phone : null;
+
+	let parentInquiryDetails: ParentInquiryInput | null = null;
+	if (role === 'parent') {
+		await ctx.reply(
+			lang === 'ar'
+				? 'رائع! سأطرح عليك بعض الأسئلة السريعة عن طفلك حتى أرسلها لفريق الإدارة.'
+				: "Great! I'll ask a few quick questions about your child so I can share them with the admin team."
+		);
+		const childName = await askText(
+			"What is your child's full name?",
+			'ما هو الاسم الكامل لطفلك؟'
+		);
+		const childAgeOrGrade = await askText(
+			'How old is your child or which grade are they in?',
+			'كم عمر طفلك أو ما صفه الدراسي؟'
+		);
+		const programPreference = await askText(
+			'Which program, days, or times are you interested in? (optional, send "-" to skip)',
+			'ما البرنامج أو الأيام أو الأوقات التي تناسبك؟ (اختياري، أرسل "-" للتخطي)',
+			true
+		);
+		const notes = await askText(
+			'Anything else we should know? (optional, send "-" to skip)',
+			'هل هناك أي تفاصيل إضافية نحتاج لمعرفتها؟ (اختياري، أرسل "-" للتخطي)',
+			true
+		);
+
+		const preferredContact = phoneValue || (ctx.from.username ? `@${ctx.from.username}` : null);
+		const sanitizedChildName = childName?.trim() || 'Unknown';
+		const sanitizedAgeOrGrade = childAgeOrGrade?.trim() || null;
+		const sanitizedProgram = programPreference?.trim() || null;
+		const sanitizedNotes = notes?.trim() || null;
+
+		parentInquiryDetails = {
+			telegramUserId: ctx.from.id,
+			parentName: `${firstName} ${lastName || ''}`.trim(),
+			contact: preferredContact,
+			childName: sanitizedChildName,
+			childAgeOrGrade: sanitizedAgeOrGrade,
+			programPreference: sanitizedProgram,
+			notes: sanitizedNotes,
+		};
+	}
 
 	// Register user
 	await ctx.reply(t('processing', lang));
@@ -99,11 +187,24 @@ export async function registerUserConversation(conversation: Conversation<BaseCo
 			phone: phoneValue || undefined,
 		});
 
+		const roleText = getRoleLabel(role, lang);
 		await ctx.reply(
 			lang === 'ar'
-				? `تم التسجيل بنجاح!\n\nالدور: ${role === 'student' ? 'طالب' : 'معلم'}\nالاسم: ${user.firstName} ${user.lastName || ''}`
-				: `Registration successful!\n\nRole: ${role}\nName: ${user.firstName} ${user.lastName || ''}`
+				? `تم التسجيل بنجاح!\n\nالدور: ${roleText}\nالاسم: ${user.firstName} ${user.lastName || ''}`
+				: `Registration successful!\n\nRole: ${roleText}\nName: ${user.firstName} ${user.lastName || ''}`
 		);
+
+		if (role === 'parent' && parentInquiryDetails) {
+			try {
+				await saveParentInquiry(parentInquiryDetails);
+			} catch (error) {
+				logger.error('Failed to save parent inquiry', {
+					error: error instanceof Error ? error.message : String(error),
+					userId: ctx.from.id,
+				});
+			}
+			await ctx.reply(t('parent_inquiry_thanks', lang), { parse_mode: 'Markdown' });
+		}
 	} catch (err) {
 		await ctx.reply(t('operation_failed', lang));
 	}
@@ -131,9 +232,7 @@ export async function viewProfileConversation(_conversation: Conversation<BaseCo
 		return;
 	}
 
-	const roleText = lang === 'ar'
-		? (user.role === 'admin' ? 'مدير' : user.role === 'teacher' ? 'معلم' : 'طالب')
-		: user.role;
+	const roleText = getRoleLabel(user.role as UserRole, lang);
 
 	const info = lang === 'ar'
 		? `
@@ -246,12 +345,14 @@ export async function assignRoleConversation(conversation: Conversation<BaseCont
 		.text('Admin', 'set_admin').row()
 		.text('Teacher', 'set_teacher').row()
 		.text('Student', 'set_student').row()
+		.text('Parent', 'set_parent').row()
 		.text(t('cancel', lang), 'cancel');
 
+	const currentRoleLabel = getRoleLabel(targetUser.role as UserRole, lang);
 	await ctx.reply(
 		lang === 'ar'
-			? `اختر الدور الجديد للمستخدم:\n\nالمستخدم الحالي: ${targetUser.firstName} ${targetUser.lastName || ''}\nالدور الحالي: ${targetUser.role}`
-			: `Select new role for user:\n\nCurrent user: ${targetUser.firstName} ${targetUser.lastName || ''}\nCurrent role: ${targetUser.role}`,
+			? `اختر الدور الجديد للمستخدم:\n\nالمستخدم الحالي: ${targetUser.firstName} ${targetUser.lastName || ''}\nالدور الحالي: ${currentRoleLabel}`
+			: `Select new role for user:\n\nCurrent user: ${targetUser.firstName} ${targetUser.lastName || ''}\nCurrent role: ${currentRoleLabel}`,
 		{ reply_markup: roleKeyboard }
 	);
 
@@ -283,6 +384,8 @@ export async function assignRoleConversation(conversation: Conversation<BaseCont
 		newRole = 'admin';
 	} else if (roleData === 'set_teacher') {
 		newRole = 'teacher';
+	} else if (roleData === 'set_parent') {
+		newRole = 'parent';
 	}
 
 	// Update role
@@ -321,10 +424,9 @@ export async function listUsersConversation(_conversation: Conversation<BaseCont
 	}
 
 	const userList = allUsers.map((user, index) => {
-		const roleText = lang === 'ar'
-			? (user.role === 'admin' ? 'مدير' : user.role === 'teacher' ? 'معلم' : 'طالب')
-			: user.role;
-		return `${index + 1}. ${user.firstName} ${user.lastName || ''} (${roleText}) - ${user.isActive ? 'Active' : 'Inactive'}`;
+		const roleText = getRoleLabel(user.role as UserRole, lang);
+		const statusText = lang === 'ar' ? (user.isActive ? 'نشط' : 'غير نشط') : (user.isActive ? 'Active' : 'Inactive');
+		return `${index + 1}. ${user.firstName} ${user.lastName || ''} (${roleText}) - ${statusText}`;
 	}).join('\n');
 
 	await ctx.reply(

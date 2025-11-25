@@ -7,7 +7,7 @@ import type { InferSelectModel, InferInsertModel } from 'drizzle-orm';
 export type User = InferSelectModel<typeof users>;
 export type NewUser = InferInsertModel<typeof users>;
 
-export type UserRole = 'admin' | 'teacher' | 'student';
+export type UserRole = 'admin' | 'teacher' | 'student' | 'parent';
 
 export class UserService {
 	/**
