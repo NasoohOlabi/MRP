@@ -94,7 +94,7 @@ src/
 bun run dev
 ```
 
-The entry point is now `src/app/index.ts` (updated in package.json).
+The entry point is `src/index.ts`.
 
 ### Running Tests
 
@@ -110,8 +110,8 @@ bun run drizzle
 
 ## Key Files
 
-- **Entry Point**: `src/app/index.ts`
-- **Bot Setup**: `src/app/telegram/bot.ts`
+- **Entry Point**: `src/index.ts`
+- **Bot Setup**: `src/bot.ts`
 - **Services**: `src/core/services/`
 - **Domain Models**: `src/core/domain/`
 - **Repositories**: `src/infrastructure/db/repositories/`
@@ -127,7 +127,7 @@ bun run drizzle
 
 ## Breaking Changes
 
-- Entry point changed from `src/index.ts` to `src/app/index.ts`
+- Entry point is `src/index.ts`
 - Import paths changed (old imports will need updating)
 - Old repo classes still exist for backward compatibility but should be migrated
 

@@ -128,7 +128,8 @@ export function createTreeConversation<Shape = Record<string, string>>(
                 chatId,
                 error: e instanceof Error ? e.message : String(e)
               });
-              sentMessage = await ctx.reply(messageText, { reply_markup: keyboard });
+              const fallbackMessage = `${messageText}\n\n${t("tap_button_hint", getLang(ctx.session))}`;
+              sentMessage = await ctx.reply(fallbackMessage, { reply_markup: keyboard });
             }
           } else {
             sentMessage = await ctx.reply(messageText, { reply_markup: keyboard });
@@ -193,7 +194,7 @@ export function createTreeConversation<Shape = Record<string, string>>(
               stepKey: step.key,
               selectedData: data
             });
-            await btnCtx.answerCallbackQuery({ text: "⚠️" });
+            await btnCtx.answerCallbackQuery({ text: t("invalid_selection", getLang(ctx.session)) });
             continue;
           }
 

@@ -1,4 +1,6 @@
 import { logger } from './logger.js';
+import { getLang, t } from './i18n.js';
+import type { MyContext } from '../types.js';
 
 /**
  * Detects if a user message is asking for help or questions about the bot
@@ -92,5 +94,26 @@ export function isHelpQuestion(text: string): boolean {
 	});
 	
 	return isHelp;
+}
+
+export interface HelpReplyOptions {
+	isAdmin?: boolean;
+	state?: string;
+}
+
+export function buildHelpReply(ctx: MyContext, options: HelpReplyOptions = {}): string {
+	const lang = getLang(ctx.session);
+	const segments = [
+		t('help_overview', lang),
+		t('help_examples', lang),
+	];
+	if (options.isAdmin) {
+		segments.push(t('help_admin_cta', lang));
+	}
+	segments.push(t('help_prompt_hint', lang));
+	if (options.state && options.state !== 'START') {
+		segments.push(t('tap_button_hint', lang));
+	}
+	return segments.filter(Boolean).join('\n\n');
 }
 

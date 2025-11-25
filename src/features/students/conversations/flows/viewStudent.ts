@@ -1,6 +1,6 @@
 import type { Conversation } from "@grammyjs/conversations";
-import type { BaseContext, MyContext } from "../../../types.js";
-import { t } from "../../../utils/i18n.js";
+import type { BaseContext, MyContext } from "../../../../types.js";
+import { t } from "../../../../utils/i18n.js";
 import { Student } from "../model.js";
 import {
   buildStudentKeyboard,

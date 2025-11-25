@@ -1,7 +1,7 @@
 import { InlineKeyboard } from "grammy";
-import type { MyContext } from "../../types.js";
+import type { MyContext } from "../../../types.js";
 import { StudentService } from "../model.js";
-import { t } from "../../utils/i18n.js";
+import { t } from "../../../utils/i18n.js";
 
 export const studentService = new StudentService();
 

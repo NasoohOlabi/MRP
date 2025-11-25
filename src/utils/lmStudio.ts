@@ -22,6 +22,7 @@ export interface ChatMessage {
 
 // Cache for loaded prompts to avoid reading from disk on every call
 let promptCache: { en?: string; ar?: string } = {};
+let classifierPromptCache: { en?: string; ar?: string } = {};
 
 /**
  * Creates a comprehensive system prompt for the teacher assistant.
@@ -78,7 +79,79 @@ export async function createSystemPrompt(language: 'en' | 'ar' = 'en'): Promise<
  */
 export function clearPromptCache(): void {
 	promptCache = {};
+	classifierPromptCache = {};
 	logger.debug('System prompt cache cleared');
+}
+
+async function loadClassifierPrompt(language: 'en' | 'ar'): Promise<string> {
+	if (classifierPromptCache[language]) {
+		return classifierPromptCache[language]!;
+	}
+
+	try {
+		const __filename = fileURLToPath(import.meta.url);
+		const __dirname = dirname(__filename);
+		const filename = language === 'ar' ? 'intent-classifier-ar.txt' : 'intent-classifier-en.txt';
+		const filePath = join(__dirname, 'prompts', filename);
+		logger.debug('Loading intent classifier prompt', { language, filePath });
+		const prompt = await readFile(filePath, 'utf-8');
+		classifierPromptCache[language] = prompt.trim();
+		return classifierPromptCache[language]!;
+	} catch (error) {
+		logger.error('Failed to load intent classifier prompt', {
+			language,
+			error: error instanceof Error ? error.message : String(error),
+			errorStack: error instanceof Error ? error.stack : undefined,
+		});
+		throw error;
+	}
+}
+
+export interface IntentClassification {
+	intent: string;
+	confidence: number;
+	reason: string;
+}
+
+export async function classifyIntent(
+	message: string,
+	language: 'en' | 'ar',
+	history: ChatMessage[] = []
+): Promise<IntentClassification | null> {
+	const systemPrompt = await loadClassifierPrompt(language);
+	const trimmedHistory = history.slice(-6);
+	try {
+		const response = await queryLMStudio(message, systemPrompt, {}, trimmedHistory);
+		const start = response.indexOf('{');
+		if (start === -1) {
+			logger.warn('Intent classifier returned non-json text', {
+				message,
+				response,
+			});
+			return null;
+		}
+		const jsonText = response.slice(start);
+		const parsed = JSON.parse(jsonText);
+		const intent =
+			typeof parsed.intent === 'string' && parsed.intent.trim()
+				? parsed.intent.trim()
+				: 'unknown';
+		const confidence = typeof parsed.confidence === 'number' ? Math.min(Math.max(parsed.confidence, 0), 1) : 0;
+		const reason = typeof parsed.reason === 'string' ? parsed.reason.trim() : '';
+		logger.debug('Intent classifier result', {
+			message,
+			intent,
+			confidence,
+			reason,
+		});
+		return { intent, confidence, reason };
+	} catch (error) {
+		logger.error('Intent classifier failed', {
+			error: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+		});
+		return null;
+	}
 }
 
 /**

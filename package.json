@@ -4,7 +4,6 @@
   "type": "module",
   "scripts": {
     "dev": "bun --watch ./src/index.ts",
-    "dev:old": "bun --watch ./src/app/index.ts",
     "drizzle": "drizzle-kit push",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
