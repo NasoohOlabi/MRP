@@ -1,4 +1,5 @@
 import type { Bot } from "grammy";
+import { getRecentParentInquiries, type ParentInquiry } from "../../features/parents/parentInquiryStore.js";
 import type { MyContext } from "../../types.js";
 import { getCurrentUser, requireAdmin, requireTeacher } from "../../utils/auth.js";
 import { t } from "../../utils/i18n.js";
@@ -10,7 +11,6 @@ import {
   studentService,
   teacherService,
 } from "../services.js";
-import { getRecentParentInquiries, type ParentInquiry } from "../../features/parents/parentInquiryStore.js";
 
 export function registerCommands(bot: Bot<MyContext>): void {
   bot.command("start", async (ctx) => {
@@ -31,11 +31,7 @@ export function registerCommands(bot: Bot<MyContext>): void {
     }
 
     if (!user.isActive) {
-      await ctx.reply(
-        lang === "ar"
-          ? "حسابك غير نشط. يرجى الاتصال بالمسؤول."
-          : "Your account is inactive. Please contact an administrator."
-      );
+      await ctx.reply(t("account_inactive", lang));
       return;
     }
 
@@ -69,8 +65,8 @@ export function registerCommands(bot: Bot<MyContext>): void {
     logger.info("Command received: /myid", { userId: ctx.from?.id, chatId: ctx.chat?.id });
     exitLLMMode(ctx);
 
-    if (!ctx.from) {
-      await ctx.reply(lang === "ar" ? "لا يمكن الحصول على معلومات المستخدم." : "Cannot get user information.");
+    if (!ctx.from?.id) {
+      await ctx.reply(t("error_user_info_unavailable", lang));
       return;
     }
 
@@ -80,9 +76,11 @@ export function registerCommands(bot: Bot<MyContext>): void {
     const lastName = ctx.from.last_name || "";
 
     const message =
-      lang === "ar"
-        ? `**معلوماتك في Telegram**\n\nمعرف المستخدم: \`${userId}\`\nاسم المستخدم: ${username}\nالاسم: ${firstName} ${lastName}\n\nاستخدم هذا المعرف مع الأمر:\n\`bun create-admin.ts ${userId}\``
-        : `**Your Telegram Information**\n\nUser ID: \`${userId}\`\nUsername: ${username}\nName: ${firstName} ${lastName}\n\nUse this ID with the command:\n\`bun create-admin.ts ${userId}\``;
+      t("telegram_info_title", lang) +
+      `\n\n${t("telegram_info_id", lang).replace("{userId}", `\`${userId}\``)}\n` +
+      `${t("telegram_info_username", lang).replace("{username}", username)}\n` +
+      `${t("telegram_info_name", lang).replace("{firstName}", firstName).replace("{lastName}", lastName)}\n` +
+      `\n${t("telegram_info_admin_command", lang).replace("{userId}", `\`bun create-admin.ts ${userId}\``)}`;
 
     await ctx.reply(message, { parse_mode: "Markdown" });
   });
@@ -186,11 +184,7 @@ export function registerCommands(bot: Bot<MyContext>): void {
     }
 
     if (!user.isActive) {
-      await ctx.reply(
-        lang === "ar"
-          ? "حسابك غير نشط. يرجى الاتصال بالمسؤول."
-          : "Your account is inactive. Please contact an administrator."
-      );
+      await ctx.reply(t("account_inactive", lang));
       return;
     }
 

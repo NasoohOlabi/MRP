@@ -166,7 +166,7 @@ function appendLmHistory(ctx: MyContext, entries: ChatMessage[]) {
 
 async function tryHandleIntent(ctx: MyContext, messageText: string, lang: string): Promise<boolean> {
 	const history = ctx.session?.lmStudioHistory || [];
-	const language = lang === "ar" ? "ar" : "en";
+	const language = lang;
 	const classification = await classifyIntent(messageText, language, history);
 
 	if (classification) {

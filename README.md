@@ -1,191 +1,148 @@
 # MRP Telegram Bot
 
-A comprehensive Telegram bot for managing student and teacher records, attendance tracking, and memorization progress for a mosque/masjid. Built with Grammy.js, Drizzle ORM, and TypeScript.
+A comprehensive, AI-powered Telegram bot for managing student and teacher records, attendance tracking, and memorization progress for mosques and educational institutions. Built with modern web technologies for performance and scalability.
 
-**Note**: The bot is deployed on [@MasjidAlBootiBot](https://t.me/MasjidAlBootiBot) for production use.
+## 🚀 Features
 
-## Features
+### Core Management
+*   **Student Management**: Full CRUD operations with fuzzy search capabilities.
+*   **Teacher Management**: Manage teacher profiles and assignments.
+*   **Attendance Tracking**: Flexible attendance taking (by group, name, or search).
+*   **Memorization Tracking**: Record and track Quran memorization progress (pages 0-604).
 
-* **Student Management**: Full CRUD operations for student records with fuzzy search
-* **Teacher Management**: Create, update, and delete teacher records
-* **Attendance Tracking**: Multiple methods for taking attendance (by group, by name, search)
-* **Memorization Tracking**: Record and track student memorization progress (Quran pages 0-604)
-* **Browse & Search**: View and search through student and teacher data with pagination
-* **Summaries**: View attendance and memorization summaries
-* **Multi-language Support**: English and Arabic interface
-* **Conversational Interface**: User-friendly tree-based conversation flows
-* **AI-Powered Help**: Ask questions about the bot using LM Studio integration (requires local LM Studio instance)
+### User Experience
+*   **Conversational Interface**: Intuitive, tree-based conversation flows.
+*   **Multi-language Support**: Full support for English and Arabic (extensible).
+*   **Smart Search**: Fuzzy search using Fuse.js to find records quickly.
+*   **AI Assistant**: Integrated with LM Studio for intelligent help and query resolution.
 
-## Technologies Used
+### Technical
+*   **Data Persistence**: SQLite database with Drizzle ORM for type-safe queries.
+*   **Logging**: Comprehensive logging with Winston and daily rotation.
+*   **Architecture**: Modular, feature-based architecture for easy maintenance.
 
-* **Bun**: Fast all-in-one JavaScript runtime and package manager
-* **TypeScript**: Strongly typed superset of JavaScript
-* **Grammy.js**: Modern Telegram Bot API framework
-* **@grammyjs/conversations**: Plugin for handling multi-step conversations
-* **Drizzle ORM**: TypeScript ORM for SQLite database
-* **Fuse.js**: Lightweight fuzzy-search library
-* **Winston**: Logging with daily rotation
-* **dotenv**: Environment variable management
+## 🛠️ Tech Stack
 
-## Setup
+*   **Runtime**: [Bun](https://bun.sh) - Fast JavaScript runtime & package manager.
+*   **Language**: [TypeScript](https://www.typescriptlang.org/) - Static typing for robustness.
+*   **Framework**: [Grammy.js](https://grammy.dev/) - Next-gen Telegram Bot framework.
+*   **ORM**: [Drizzle ORM](https://orm.drizzle.team/) - Lightweight and type-safe.
+*   **Database**: SQLite (via `@libsql/client`).
+*   **Search**: [Fuse.js](https://www.fusejs.io/) - Powerful fuzzy-search library.
+*   **AI/LLM**: Integration with local LLMs via LM Studio.
 
-To get this project up and running, follow these steps:
+## 📋 Prerequisites
 
-1. **Clone the repository**:
+*   **Bun**: v1.0.0 or higher.
+*   **Telegram Bot Token**: From [@BotFather](https://t.me/BotFather).
+*   **LM Studio** (Optional): For AI help features.
 
+## ⚡ Quick Start
+
+1.  **Clone the repository**
     ```bash
-    git clone <repository_url>
+    git clone https://github.com/yourusername/mrp.git
     cd mrp
     ```
 
-2. **Install Dependencies**:
-
-    This project uses `bun` as its package manager. If you don't have `bun` installed, you can install it by following the instructions on [Bun's official website](https://bun.sh/docs/installation).
-
+2.  **Install dependencies**
     ```bash
     bun install
     ```
 
-3. **Environment Variables**:
-
-    Create a `.env` file in the root directory of the project and add the following environment variables:
-
+3.  **Configure Environment**
+    Create a `.env` file in the root directory:
     ```env
-    BOT_TOKEN=YOUR_TELEGRAM_BOT_TOKEN
+    BOT_TOKEN=your_telegram_bot_token
     LOG_LEVEL=info
     LM_STUDIO_URL=http://localhost:1234
     LM_STUDIO_MODEL=local-model
     ```
 
-    * `BOT_TOKEN`: Obtain this from BotFather on Telegram.
-    * `LOG_LEVEL`: Logging level (info, debug, warn, error).
-    * `LM_STUDIO_URL`: (Optional) URL for your local LM Studio instance. Defaults to `http://localhost:1234`.
-    * `LM_STUDIO_MODEL`: (Optional) Model name to use with LM Studio. Defaults to `local-model`.
+4.  **Run Migrations**
+    Initialize the database schema:
+    ```bash
+    bun run drizzle
+    ```
 
-## Running the Bot
+5.  **Start the Bot**
+    Development mode with hot-reload:
+    ```bash
+    bun run dev
+    ```
+    Production build:
+    ```bash
+    bun run build
+    bun start
+    ```
 
-To start the bot, run the following command:
-
-```bash
-bun run src/index.ts
-```
-
-Alternatively, you can use the `dev` script defined in `package.json`:
-
-```bash
-bun run dev
-```
-
-## Bot Commands
-
-Once the bot is running, you can interact with it using the following commands:
-
-* `/start` - Initiates the bot and displays a welcome message
-* `/students` - Student management (create, update, delete)
-* `/teachers` - Teacher management (create, update, delete)
-* `/browse` - Browse and search student/teacher records
-* `/memorize` - Record student memorization progress
-* `/attendance` - Take attendance for events
-* `/summary` - View attendance and memorization summaries
-* `/help [question]` - Ask questions about the bot. Uses LM Studio (if running) to provide intelligent answers based on the codebase
-
-## Project Structure
+## 📂 Project Structure
 
 ```
 MRP/
-├── docs/                      # Documentation
-│   ├── Architecture.md        # System architecture overview
-│   ├── Database-Schema.md    # Database schema documentation
-│   ├── Conversation-Flows.md  # Conversation flow documentation
-│   ├── API-Reference.md      # API and repository reference
-│   ├── Coding Style and Conventions.md
-│   └── Project Setup and Running Instructions.md
 ├── src/
-│   ├── conversations/         # Conversation flows
-│   │   ├── attendance/        # Attendance taking flows
-│   │   ├── browse/            # Browse/search flows
-│   │   ├── memorization/      # Memorization tracking
-│   │   ├── students/          # Student CRUD flows
-│   │   ├── teachers/          # Teacher CRUD flows
-│   │   ├── baseConversation.ts # Core conversation system
-│   │   └── summaryConversation.ts
-│   ├── locales/               # Internationalization
-│   │   ├── en.ts              # English translations
-│   │   └── ar.ts              # Arabic translations
-│   ├── model/                 # Data layer
-│   │   └── drizzle/           # Drizzle ORM
-│   │       ├── schema.ts      # Database schema
-│   │       ├── db.ts          # Database connection
-│   │       └── repos.ts       # Repository implementations
-│   ├── utils/                 # Utilities
-│   │   ├── i18n.ts            # Internationalization helper
-│   │   ├── logger.ts          # Winston logger
-│   │   ├── greeting.ts        # Greeting messages
-│   │   ├── lmStudio.ts        # LM Studio integration
-│   │   ├── codebaseContext.ts # Codebase context for LLM
-│   │   └── helpDetector.ts    # Help question detection
-│   ├── index.ts               # Main entry point
-│   └── types.d.ts             # TypeScript type definitions
-├── data.db                    # SQLite database (not in git)
-├── drizzle.config.json        # Drizzle configuration
-├── package.json               # Dependencies and scripts
-└── tsconfig.json              # TypeScript configuration
+│   ├── bot/                 # Bot initialization and core logic
+│   ├── db/                  # Database schema and connection
+│   ├── features/            # Feature modules (students, teachers, etc.)
+│   ├── locales/             # i18n translation files
+│   ├── utils/               # Shared utilities (logger, helpers)
+│   └── index.ts             # Entry point
+├── docs/                    # Detailed documentation
+├── tests/                   # Unit and integration tests
+└── drizzle.config.json      # ORM configuration
 ```
 
-## Documentation
+## 🤝 Contributing
 
-Comprehensive documentation is available in the `docs/` directory:
+We welcome contributions! Please follow these steps:
 
-* **[Architecture.md](docs/Architecture.md)** - System architecture, design patterns, and data flow
-* **[Database-Schema.md](docs/Database-Schema.md)** - Complete database schema documentation
-* **[Conversation-Flows.md](docs/Conversation-Flows.md)** - Detailed conversation flow documentation
-* **[API-Reference.md](docs/API-Reference.md)** - Repository API and utility function reference
-* **[Coding Style and Conventions.md](docs/Coding%20Style%20and%20Conventions.md)** - Code style guidelines
-* **[Project Setup and Running Instructions.md](docs/Project%20Setup%20and%20Running%20Instructions.md)** - Setup guide
+1.  Fork the repository.
+2.  Create a feature branch (`git checkout -b feature/amazing-feature`).
+3.  Commit your changes (`git commit -m 'Add amazing feature'`).
+4.  Push to the branch (`git push origin feature/amazing-feature`).
+5.  Open a Pull Request.
 
-## Quick Start
+Please ensure you add tests for new features and update documentation as needed.
 
-1. **Install dependencies**:
-   ```bash
-   bun install
-   ```
+## 🗺️ Roadmap & Todo
 
-2. **Configure environment**:
-   Create a `.env` file:
-   ```env
-   BOT_TOKEN=your_telegram_bot_token
-   LOG_LEVEL=info
-   LM_STUDIO_URL=http://localhost:1234  # Optional: for AI-powered help
-   LM_STUDIO_MODEL=local-model          # Optional: model name for LM Studio
-   ```
-   
-   **Note**: To use the AI-powered help feature (`/help` command), you need to have LM Studio running locally with a model loaded. The bot will automatically detect help questions and use LM Studio to provide answers based on the codebase.
+We have an ambitious plan to evolve MRP into a full-fledged educational management platform.
 
-3. **Run the bot**:
-   ```bash
-   bun run dev
-   ```
+### Phase 1: Enhanced Management & UI
+- [ ] **Web Dashboard**: Admin panel for easier data management.
+- [ ] **Analytics Dashboard**: Visual charts for attendance and memorization.
+- [ ] **Parent Portal**: Web view for parents to track child's progress.
+- [ ] **Role-Based Access Control (RBAC)**: Fine-grained permissions system.
+- [ ] **Bulk Import/Export**: Enhanced CSV/Excel support for data migration.
 
-For detailed setup instructions, see [Project Setup and Running Instructions.md](docs/Project%20Setup%20and%20Running%20Instructions.md).
+### Phase 2: Automation & Reliability
+- [ ] **Automated Backups**: Scheduled DB backups to cloud storage.
+- [ ] **Notifications System**: Automated reminders for attendance/events.
+- [ ] **Docker Support**: Containerization for easy deployment.
+- [ ] **CI/CD Pipeline**: Automated testing and deployment workflows.
+- [ ] **Rate Limiting**: Prevent abuse of the bot.
 
-## Development
+### Phase 3: Advanced Features
+- [ ] **Multi-Tenancy**: Support for multiple masjids/organizations.
+- [ ] **Student Performance Reports**: PDF generation for progress reports.
+- [ ] **Gamification**: Badges and points for memorization milestones.
+- [ ] **QR Code Attendance**: Fast check-in for students.
+- [ ] **Audit Logging**: Track who changed what and when.
 
-### Database Migrations
+### Phase 4: Integration & Expansion
+- [ ] **API Access**: REST/GraphQL API for external integrations.
+- [ ] **Webhook Support**: Trigger external events on bot actions.
+- [ ] **Localization Editor**: UI for managing translations.
+- [ ] **Interactive Onboarding**: Guided tour for new admins.
+- [ ] **Dark Mode**: For the web dashboard.
 
-To apply schema changes:
-```bash
-bun run drizzle
-```
+### Phase 5: Future Concepts
+- [ ] **Student ID Cards**: Generate printable ID cards.
+- [ ] **Advanced Search**: Filter by multiple criteria (age, level, etc.).
+- [ ] **Teacher Performance Metrics**: Track teacher activity/effectiveness.
+- [ ] **Class Scheduling**: Manage class times and locations.
+- [ ] **Feedback System**: Allow users to report bugs/suggestions.
 
-### Adding New Features
+## 📄 License
 
-1. Create conversation in appropriate `src/conversations/` directory
-2. Register conversation in `src/index.ts`
-3. Add command handler
-4. Add i18n keys to `src/locales/en.ts` and `src/locales/ar.ts`
-
-See [Conversation-Flows.md](docs/Conversation-Flows.md) for detailed guidance.
-
-## License
-
-[Add your license here]
+[MIT](LICENSE)

@@ -12,7 +12,7 @@ const quickCommandButtons = [
 
 export async function sendGreeting(ctx: MyContext) {
   const lang = getLang(ctx.session);
-  const locale = lang === "ar" ? "ar" : "en";
+  const locale = lang;
   await ctx.reply(t("greeting", locale));
   if (!ctx.session) {
     return;

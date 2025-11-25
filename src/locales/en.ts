@@ -122,4 +122,11 @@ export const en = {
     llm_mode_exited: "LLM test mode exited.",
     llm_processing: "Processing your message with LLM...",
     llm_error: "An error occurred while processing your message with the LLM.",
+    error_user_info_unavailable: "Cannot get user information.",
+    account_inactive: "Your account is inactive. Please contact an administrator.",
+    telegram_info_title: "**Your Telegram Information**",
+    telegram_info_id: "User ID: {userId}",
+    telegram_info_username: "Username: {username}",
+    telegram_info_name: "Name: {firstName} {lastName}",
+    telegram_info_admin_command: "Use this ID with the command: {userId}",
 };

@@ -16,7 +16,7 @@ export function createBot(): Bot<MyContext> {
   }
   const bot = new Bot<MyContext>(botToken);
 
-  bot.use(session({ initial: (): MySession => ({ state: "START", language: "en" }) }));
+  bot.use(session({ initial: (): MySession => ({ state: "START", language: "ar" }) }));
   bot.use(conversations());
 
   registerConversations(bot);
@@ -48,4 +48,5 @@ export async function startBot(): Promise<void> {
     throw error;
   }
 }
+
 

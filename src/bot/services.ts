@@ -8,3 +8,4 @@ export const teacherService = new TeacherService();
 export const attendanceService = new AttendanceService();
 export const memorizationService = new MemorizationService();
 
+

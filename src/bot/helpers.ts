@@ -3,7 +3,7 @@ import { logger } from "../utils/logger.js";
 import { t } from "../utils/i18n.js";
 
 export function getLang(ctx: MyContext): string {
-  return ctx.session?.language || "en";
+  return ctx.session?.language || "ar";
 }
 
 export function formatDate(date: Date, lang: string): string {

@@ -6,7 +6,7 @@ const locales = { en, ar };
 
 export type LocaleKey = keyof typeof en;
 
-export function t(key: string, lang: string = 'en', params?: Record<string, string>): string {
+export function t(key: string, lang: string = 'ar', params?: Record<string, string>): string {
     const locale = locales[lang as keyof typeof locales] || en;
     // @ts-ignore
     let text = locale[key] || key;
