@@ -172,3 +172,4 @@ const studentWithAttendance = await db.query.students.findFirst({
 ```
 
 
+
