@@ -9,6 +9,7 @@ The MRP codebase has been completely refactored to follow clean architecture pri
 ### 1. Project Structure
 
 **Before:**
+
 ```
 src/
 ├── conversations/
@@ -19,6 +20,7 @@ src/
 ```
 
 **After:**
+
 ```
 src/
 ├── app/              # Application layer (Telegram adapter)
@@ -138,4 +140,3 @@ bun run drizzle
 3. **Testability**: Services can be easily unit tested
 4. **Observability**: Comprehensive logging and tracing for debugging and monitoring
 5. **Scalability**: Clean architecture makes it easy to add new features
-
