@@ -4,7 +4,7 @@ import type { MyContext } from "../../types.js";
 import { getCurrentUser, requireAdmin, requireTeacher } from "../../utils/auth.js";
 import { t } from "../../utils/i18n.js";
 import { logger } from "../../utils/logger.js";
-import { exitLLMMode, formatDate, getLang } from "../helpers.js";
+import { formatDate, getLang } from "../helpers.js";
 import {
   attendanceService,
   memorizationService,
@@ -16,7 +16,6 @@ export function registerCommands(bot: Bot<MyContext>): void {
   bot.command("start", async (ctx) => {
     const lang = getLang(ctx);
     logger.info("Command received: /start", { userId: ctx.from?.id, chatId: ctx.chat?.id });
-    exitLLMMode(ctx);
 
     if (!ctx.from?.id) {
       await ctx.reply(t("cannot_get_user_info", lang));
@@ -50,20 +49,17 @@ export function registerCommands(bot: Bot<MyContext>): void {
 
   bot.command("register", async (ctx) => {
     logger.info("Command received: /register", { userId: ctx.from?.id, chatId: ctx.chat?.id });
-    exitLLMMode(ctx);
     await ctx.conversation.enter("register_user");
   });
 
   bot.command("profile", async (ctx) => {
     logger.info("Command received: /profile", { userId: ctx.from?.id, chatId: ctx.chat?.id });
-    exitLLMMode(ctx);
     await ctx.conversation.enter("view_profile");
   });
 
   bot.command("myid", async (ctx) => {
     const lang = getLang(ctx);
     logger.info("Command received: /myid", { userId: ctx.from?.id, chatId: ctx.chat?.id });
-    exitLLMMode(ctx);
 
     if (!ctx.from?.id) {
       await ctx.reply(t("error_user_info_unavailable", lang));
@@ -87,9 +83,6 @@ export function registerCommands(bot: Bot<MyContext>): void {
 
   bot.command("assignrole", async (ctx) => {
     logger.info("Command received: /assignrole", { userId: ctx.from?.id, chatId: ctx.chat?.id });
-    if (ctx.session?.inLLMMode) {
-      ctx.session.inLLMMode = false;
-    }
     if (await requireAdmin(ctx)) {
       await ctx.conversation.enter("assign_role");
     }
@@ -97,9 +90,6 @@ export function registerCommands(bot: Bot<MyContext>): void {
 
   bot.command("users", async (ctx) => {
     logger.info("Command received: /users", { userId: ctx.from?.id, chatId: ctx.chat?.id });
-    if (ctx.session?.inLLMMode) {
-      ctx.session.inLLMMode = false;
-    }
     if (await requireAdmin(ctx)) {
       await ctx.conversation.enter("list_users");
     }
@@ -108,7 +98,6 @@ export function registerCommands(bot: Bot<MyContext>): void {
   bot.command("parentleads", async (ctx) => {
     const lang = getLang(ctx);
     logger.info("Command received: /parentleads", { userId: ctx.from?.id, chatId: ctx.chat?.id });
-    exitLLMMode(ctx);
     if (!(await requireAdmin(ctx))) {
       return;
     }
@@ -122,21 +111,8 @@ export function registerCommands(bot: Bot<MyContext>): void {
     await ctx.reply(`${header}\n\n${lines}`);
   });
 
-  bot.command("tryllm", async (ctx) => {
-    const lang = getLang(ctx);
-    logger.info("Command received: /tryllm", { userId: ctx.from?.id, chatId: ctx.chat?.id });
-    if (await requireAdmin(ctx)) {
-      ctx.session.inLLMMode = true;
-      if (!ctx.session.lmStudioHistory) {
-        ctx.session.lmStudioHistory = [];
-      }
-      await ctx.reply(t("llm_mode_entered", lang));
-    }
-  });
-
   bot.command("students", async (ctx) => {
     logger.info("Command received: /students", { userId: ctx.from?.id, chatId: ctx.chat?.id });
-    exitLLMMode(ctx);
     if (await requireTeacher(ctx)) {
       await ctx.conversation.enter("students");
     }
@@ -144,7 +120,6 @@ export function registerCommands(bot: Bot<MyContext>): void {
 
   bot.command("teachers", async (ctx) => {
     logger.info("Command received: /teachers", { userId: ctx.from?.id, chatId: ctx.chat?.id });
-    exitLLMMode(ctx);
     if (await requireTeacher(ctx)) {
       await ctx.conversation.enter("teachers");
     }
@@ -152,7 +127,6 @@ export function registerCommands(bot: Bot<MyContext>): void {
 
   bot.command("attendance", async (ctx) => {
     logger.info("Command received: /attendance", { userId: ctx.from?.id, chatId: ctx.chat?.id });
-    exitLLMMode(ctx);
     if (await requireTeacher(ctx)) {
       await ctx.conversation.enter("attendance");
     }
@@ -160,7 +134,6 @@ export function registerCommands(bot: Bot<MyContext>): void {
 
   bot.command("memorize", async (ctx) => {
     logger.info("Command received: /memorize", { userId: ctx.from?.id, chatId: ctx.chat?.id });
-    exitLLMMode(ctx);
     if (await requireTeacher(ctx)) {
       await ctx.conversation.enter("memorization");
     }
@@ -169,7 +142,6 @@ export function registerCommands(bot: Bot<MyContext>): void {
   bot.command("help", async (ctx) => {
     const lang = getLang(ctx);
     logger.info("Command received: /help", { userId: ctx.from?.id, chatId: ctx.chat?.id });
-    exitLLMMode(ctx);
 
     if (!ctx.from?.id) {
       await ctx.reply(t("cannot_get_user_info", lang));
@@ -204,7 +176,6 @@ export function registerCommands(bot: Bot<MyContext>): void {
   bot.command("myinfo", async (ctx) => {
     const lang = getLang(ctx);
     logger.info("Command received: /myinfo", { userId: ctx.from?.id, chatId: ctx.chat?.id });
-    exitLLMMode(ctx);
 
     if (!ctx.from?.id) {
       await ctx.reply(t("cannot_get_user_info", lang));
@@ -250,7 +221,6 @@ export function registerCommands(bot: Bot<MyContext>): void {
   bot.command("mymemorization", async (ctx) => {
     const lang = getLang(ctx);
     logger.info("Command received: /mymemorization", { userId: ctx.from?.id, chatId: ctx.chat?.id });
-    exitLLMMode(ctx);
 
     if (!ctx.from?.id) {
       await ctx.reply(t("cannot_get_user_info", lang));
@@ -294,7 +264,6 @@ export function registerCommands(bot: Bot<MyContext>): void {
   bot.command("myattendance", async (ctx) => {
     const lang = getLang(ctx);
     logger.info("Command received: /myattendance", { userId: ctx.from?.id, chatId: ctx.chat?.id });
-    exitLLMMode(ctx);
 
     if (!ctx.from?.id) {
       await ctx.reply(t("cannot_get_user_info", lang));
@@ -347,7 +316,6 @@ export function registerCommands(bot: Bot<MyContext>): void {
 async function handleStudentGroupOrTeacher(ctx: MyContext, type: "group" | "teacher") {
   const lang = getLang(ctx);
   logger.info(`Command received: /my${type}`, { userId: ctx.from?.id, chatId: ctx.chat?.id });
-  exitLLMMode(ctx);
 
   if (!ctx.from?.id) {
     await ctx.reply(t("cannot_get_user_info", lang));

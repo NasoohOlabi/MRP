@@ -8,35 +8,26 @@ import { logger } from './logger.js';
 export async function getCodebaseContext(): Promise<string> {
 	const startTime = Date.now();
 	const contextFiles = [
-		// Core files
 		{ path: 'README.md', description: 'Project overview and setup' },
-		{ path: 'package.json', description: 'Dependencies and scripts' },
-		{ path: 'src/index.ts', description: 'Main bot entry point' },
-		{ path: 'src/types.d.ts', description: 'Type definitions' },
-		
-		// Architecture and docs
 		{ path: 'docs/Architecture.md', description: 'Architecture documentation' },
-		{ path: 'docs/Conversation-Flows.md', description: 'Conversation flow documentation' },
-		{ path: 'docs/Database-Schema.md', description: 'Database schema documentation' },
-		
-		// Core conversation system
-		{ path: 'src/conversations/baseConversation.ts', description: 'Base conversation builder' },
-		
-		// Key conversation modules
-		{ path: 'src/conversations/students/studentCrud.ts', description: 'Student CRUD operations' },
-		{ path: 'src/conversations/teachers/teacherCrud.ts', description: 'Teacher CRUD operations' },
-		{ path: 'src/conversations/attendance/attendanceTaking.ts', description: 'Attendance taking flow' },
-		{ path: 'src/conversations/memorization/memorizationConversation.ts', description: 'Memorization tracking' },
-		{ path: 'src/conversations/browse/browseConversation.ts', description: 'Browse functionality' },
-		{ path: 'src/conversations/summaryConversation.ts', description: 'Summary functionality' },
-		
-		// Repositories
-		{ path: 'src/model/drizzle/repos.ts', description: 'Data repositories' },
-		{ path: 'src/model/drizzle/schema.ts', description: 'Database schema' },
-		
-		// Utilities
-		{ path: 'src/utils/greeting.ts', description: 'Greeting utilities' },
-		{ path: 'src/utils/i18n.ts', description: 'Internationalization' },
+		{ path: 'docs/Conversation-Flows.md', description: 'Conversation flows and intents' },
+		{ path: 'docs/Database-Schema.md', description: 'Database schema reference' },
+		{ path: 'docs/Development-Guide.md', description: 'Developer workflow and conventions' },
+		{ path: 'src/index.ts', description: 'Application entry point' },
+		{ path: 'src/bot/index.ts', description: 'Bot initialization and middleware' },
+		{ path: 'src/bot/textHandler.ts', description: 'Text routing and fallback handling' },
+		{ path: 'src/bot/commands/index.ts', description: 'Slash command handlers' },
+		{ path: 'src/bot/registerConversations.ts', description: 'Conversation registrations' },
+		{ path: 'src/features/students/conversations.ts', description: 'Student feature conversations' },
+		{ path: 'src/features/students/model.ts', description: 'Student data model' },
+		{ path: 'src/features/teachers/conversations.ts', description: 'Teacher feature conversations' },
+		{ path: 'src/features/attendance/conversations.ts', description: 'Attendance management flows' },
+		{ path: 'src/features/memorization/conversations.ts', description: 'Memorization tracking flows' },
+		{ path: 'src/features/users/conversations.ts', description: 'User management flows' },
+		{ path: 'src/utils/auth.ts', description: 'Authentication helpers' },
+		{ path: 'src/utils/helpDetector.ts', description: 'Help intent detection' },
+		{ path: 'src/utils/i18n.ts', description: 'Internationalization utilities' },
+		{ path: 'src/utils/lmStudio.ts', description: 'LLM integration helper' },
 	];
 
 	const contextParts: string[] = [];
@@ -89,57 +80,5 @@ export async function getCodebaseContext(): Promise<string> {
 	});
 
 	return contextParts.join('\n');
-}
-
-/**
- * Creates a system prompt for the LLM with codebase context
- */
-export async function createSystemPrompt(): Promise<string> {
-	const startTime = Date.now();
-	logger.debug('Creating system prompt');
-	
-	const codebaseContext = await getCodebaseContext();
-	const contextDuration = Date.now() - startTime;
-	
-	const systemPrompt = `You are a helpful assistant for the MRP (Masjid Record Program) Telegram Bot. 
-You have access to the bot's codebase and documentation to answer questions about how the bot works, 
-how to use its features, and help users understand the bot's capabilities.
-
-## Bot Overview
-The MRP Bot is a Telegram bot built with Grammy.js that manages:
-- Student records (CRUD operations)
-- Teacher records (CRUD operations)
-- Attendance tracking
-- Memorization progress tracking
-- Browsing and searching records
-
-## Available Commands
-- /start - Initiates the bot and displays welcome message
-- /students or /student - Student management conversation
-- /teachers or /teacher - Teacher management conversation
-- /browse - Browse and search records
-- /memorize - Record student memorization progress
-- /attendance - Take attendance
-- /summary - View attendance and memorization summaries
-
-## Codebase Context
-${codebaseContext}
-
-## Instructions
-- Answer questions about how to use the bot, its features, and commands
-- Explain how different features work based on the codebase
-- Provide helpful guidance when users are confused
-- Be concise but thorough
-- If you don't know something, say so rather than guessing
-- Use the codebase context to provide accurate information`;
-	
-	const totalDuration = Date.now() - startTime;
-	logger.info('System prompt created', { 
-		promptLength: systemPrompt.length,
-		contextDurationMs: contextDuration,
-		totalDurationMs: totalDuration 
-	});
-	
-	return systemPrompt;
 }
 

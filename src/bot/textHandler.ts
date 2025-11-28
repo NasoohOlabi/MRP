@@ -1,5 +1,6 @@
 import type { Bot } from "grammy";
 import type { MyContext } from "../types.js";
+import type { User } from "../features/users/model.js";
 import { getCurrentUser, requireAdmin, requireTeacher } from "../utils/auth.js";
 import {
 	buildHelpReply,
@@ -14,7 +15,7 @@ import {
 	sanitizeTelegramMarkdown,
 } from "../utils/lmStudio.js";
 import { logger } from "../utils/logger.js";
-import { exitLLMMode, getLang } from "./helpers.js";
+import { getLang } from "./helpers.js";
 const intentRoutes: Record<
 	string,
 	{ conversation: string; requiresRole?: "teacher" | "admin" }
@@ -26,7 +27,7 @@ const intentRoutes: Record<
 	"users.register": { conversation: "register_user", requiresRole: "admin" },
 };
 
-const MAX_HISTORY_LENGTH = 10;
+const MAX_HISTORY_LENGTH = 20;
 
 export function registerTextHandler(bot: Bot<MyContext>): void {
 	bot.on("callback_query:data", async (ctx) => {
@@ -50,10 +51,12 @@ export function registerTextHandler(bot: Bot<MyContext>): void {
 	});
 
 	bot.on("message:text", async (ctx) => {
-		const messageText = ctx.message.text;
-		const lang = getLang(ctx);
+		const chatId = ctx.chat?.id;
+		const rawMessage = ctx.message.text ?? "";
+		const messageText = rawMessage.trim();
+		const lang = getLang(ctx) as "en" | "ar";
 
-		if (messageText.startsWith("/")) {
+		if (!chatId || !messageText || messageText.startsWith("/")) {
 			return;
 		}
 
@@ -61,95 +64,54 @@ export function registerTextHandler(bot: Bot<MyContext>): void {
 			return;
 		}
 
-		const user = await getCurrentUser(ctx);
-
-		if (isHelpQuestion(messageText)) {
-			const helpOptions: { isAdmin?: boolean; state?: string } = {
-				isAdmin: user?.role === "admin",
-			};
-			if (ctx.session?.state) {
-				helpOptions.state = ctx.session.state;
-			}
-			const helpReply = buildHelpReply(ctx, helpOptions);
-			await ctx.reply(helpReply);
-			logger.info("help-question", {
-				userId: ctx.from.id,
-				state: ctx.session?.state,
+		let currentUser: User | null = null;
+		const respondWithFallback = (reason: LlmFallbackReason, error?: unknown) =>
+			respondWithLLMFallback(ctx, {
+				messageText,
 				lang,
+				user: currentUser,
+				reason,
+				error,
 			});
-			appendLmHistory(ctx, [
-				{ role: "user", content: messageText },
-				{ role: "assistant", content: helpReply },
-			]);
-			return;
-		}
 
-		if (user && user.isActive && user.role === "admin" && ctx.session?.inLLMMode) {
-			try {
-				await ctx.api.sendChatAction(ctx.chat.id, "typing");
-				const history = ctx.session.lmStudioHistory || [];
-				const systemPrompt = await createSystemPrompt(lang as "en" | "ar");
-				const response = await queryLMStudio(messageText, systemPrompt, {}, history);
-				const sanitizedResponse = sanitizeTelegramMarkdown(response);
+		try {
+			currentUser = await getCurrentUser(ctx);
 
-				if (!ctx.session.lmStudioHistory) {
-					ctx.session.lmStudioHistory = [];
+			if (isHelpQuestion(messageText)) {
+				const helpOptions: { isAdmin?: boolean; state?: string } = {
+					isAdmin: currentUser?.role === "admin",
+				};
+				if (ctx.session?.state) {
+					helpOptions.state = ctx.session.state;
 				}
-				ctx.session.lmStudioHistory.push(
-					{ role: "user", content: messageText },
-					{ role: "assistant", content: sanitizedResponse }
-				);
-				if (ctx.session.lmStudioHistory.length > 10) {
-					ctx.session.lmStudioHistory = ctx.session.lmStudioHistory.slice(-10);
-				}
-
-				try {
-					await ctx.reply(sanitizedResponse, { parse_mode: "Markdown" });
-				} catch (markdownError) {
-					logger.warn("Markdown parsing failed, sending as plain text", {
-						error: markdownError instanceof Error ? markdownError.message : String(markdownError),
-					});
-					await ctx.reply(sanitizedResponse);
-				}
-			} catch (error) {
-				logger.error("Error processing LLM request", {
-					error: error instanceof Error ? error.message : String(error),
+				const helpReply = buildHelpReply(ctx, helpOptions);
+				await ctx.reply(helpReply);
+				logger.info("help-question", {
+					userId: ctx.from.id,
+					state: ctx.session?.state,
+					lang,
 				});
-				await ctx.reply(t("llm_error", lang));
+				appendLmHistory(ctx, [
+					{ role: "user", content: messageText },
+					{ role: "assistant", content: helpReply },
+				]);
+				return;
 			}
-			return;
-		}
 
-		if (await tryHandleIntent(ctx, messageText, lang)) {
-			return;
-		}
-
-		if (ctx.session?.state === "START") {
-			if (messageText === "/student") {
-				logger.info("Text command received: /student", { userId: ctx.from?.id, chatId: ctx.chat?.id });
-				exitLLMMode(ctx);
-				if (await requireTeacher(ctx)) {
-					await ctx.conversation.enter("students");
-				}
-			} else if (messageText === "/teacher") {
-				logger.info("Text command received: /teacher", { userId: ctx.from?.id, chatId: ctx.chat?.id });
-				exitLLMMode(ctx);
-				if (await requireTeacher(ctx)) {
-					await ctx.conversation.enter("teachers");
-				}
-			} else if (messageText === "/attendance") {
-				logger.info("Text command received: /attendance", { userId: ctx.from?.id, chatId: ctx.chat?.id });
-				exitLLMMode(ctx);
-				if (await requireTeacher(ctx)) {
-					await ctx.conversation.enter("attendance");
-				}
-			} else if (messageText === "/memorize") {
-				logger.info("Text command received: /memorize", { userId: ctx.from?.id, chatId: ctx.chat?.id });
-				exitLLMMode(ctx);
-				if (await requireTeacher(ctx)) {
-					await ctx.conversation.enter("memorization");
-				}
+			const handled = await tryHandleIntent(ctx, messageText, lang);
+			if (handled) {
+				return;
 			}
+
+			await respondWithFallback("unhandled_message");
+		} catch (error) {
+			logger.error("text-handler-error", {
+				userId: ctx.from?.id,
+				chatId,
+				error: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+			});
+			await respondWithFallback("handler_error", error);
 		}
 	});
 }

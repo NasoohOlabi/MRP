@@ -1,0 +1,8 @@
+read the @Wartaqi.csv this course is way more simple essensially I have students I take their first name last name and birth year and only their phone number
+
+each student has a teacher
+I need to take attendance 
+ each student has a level you can consider it `class` 1-2-3-4
+each student is entitled to one notebook per class so if he's 1 and has class if he graduate 1 he's entited to a new notebook
+
+import the data from the csv into the db

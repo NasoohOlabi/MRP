@@ -34,6 +34,7 @@ The application requires certain environment variables to function correctly, pa
 
     ```env
     BOT_TOKEN="YOUR_TELEGRAM_BOT_TOKEN"
+    WARTAQI_BOT_TOKEN="YOUR_WARTAQI_TELEGRAM_BOT_TOKEN"
     SHEET_DB="YOUR_SHEETDB_API_ENDPOINT_OR_SPREADSHEET_ID"
     SHEET_DB_TOKEN="YOUR_SHEETDB_API_TOKEN" # Optional, if your SheetDB API requires authentication
 
@@ -63,6 +64,12 @@ Once the dependencies are installed and the `.env` file is configured, you can s
     ```
 
 The bot should now start, connect to Telegram, and be ready to process commands and messages. Check your terminal for any startup logs or error messages.
+
+2. **Run the Wartaqi bot**:
+    ```bash
+    bun run start:wartaqi
+    ```
+    This script launches the standalone Wartaqi bot that uses the `WARTAQI_BOT_TOKEN` and persists data to `WartaqiDB.db`.
 
 ## 5. Development
 

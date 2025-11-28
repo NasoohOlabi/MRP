@@ -1,6 +1,7 @@
 import { readFile } from 'fs/promises';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import { getCodebaseContext } from './codebaseContext.js';
 import { logger } from './logger.js';
 
 export interface LMStudioConfig {
@@ -10,7 +11,7 @@ export interface LMStudioConfig {
 }
 
 const DEFAULT_CONFIG: Required<LMStudioConfig> = {
-	baseUrl: 'http://10.2.0.2:1234',
+	baseUrl: 'http://10.14.0.2:1234',
 	model: 'openai/gpt-oss-20b',
 	timeout: 1000 * 60 * 5, // 5 mins
 };
@@ -23,6 +24,8 @@ export interface ChatMessage {
 // Cache for loaded prompts to avoid reading from disk on every call
 let promptCache: { en?: string; ar?: string } = {};
 let classifierPromptCache: { en?: string; ar?: string } = {};
+let repoContextCache: string | null = null;
+let repoContextPromise: Promise<string> | null = null;
 
 /**
  * Creates a comprehensive system prompt for the teacher assistant.
@@ -47,9 +50,14 @@ export async function createSystemPrompt(language: 'en' | 'ar' = 'en'): Promise<
 		logger.debug('Loading system prompt from file', { language, filePath });
 
 		const prompt = await readFile(filePath, 'utf-8');
+		const repoContext = await getRepoContext();
+		const trimmedPrompt = prompt.trim();
+		const finalPrompt = repoContext
+			? `${trimmedPrompt}\n\n## Repository Context\n${repoContext}`
+			: trimmedPrompt;
 
 		// Cache the prompt
-		promptCache[language] = prompt.trim();
+		promptCache[language] = finalPrompt;
 
 		logger.info('System prompt loaded successfully', {
 			language,
@@ -69,8 +77,14 @@ export async function createSystemPrompt(language: 'en' | 'ar' = 'en'): Promise<
 			? 'أنت معلم في المسجد تساعد في إدارة سجلات الطلاب والأنشطة التعليمية. أجب على الأسئلة وقدم المساعدة بطريقة مفيدة وواضحة.'
 			: 'You are a teacher at a masjid helping manage student records and educational activities. Answer questions and provide assistance in a helpful and clear manner.';
 
+		const repoContext = await getRepoContext();
+		const finalPrompt = repoContext
+			? `${fallbackPrompt}\n\n## Repository Context\n${repoContext}`
+			: fallbackPrompt;
+
 		logger.warn('Using fallback system prompt', { language });
-		return fallbackPrompt;
+		promptCache[language] = finalPrompt;
+		return finalPrompt;
 	}
 }
 
@@ -80,6 +94,8 @@ export async function createSystemPrompt(language: 'en' | 'ar' = 'en'): Promise<
 export function clearPromptCache(): void {
 	promptCache = {};
 	classifierPromptCache = {};
+	repoContextCache = null;
+	repoContextPromise = null;
 	logger.debug('System prompt cache cleared');
 }
 
@@ -156,7 +172,7 @@ export async function classifyIntent(
 
 /**
  * Sends a request to LM Studio local instance
- * Includes the last 10 messages from conversation history if provided
+ * Includes the last 20 messages from conversation history if provided
  */
 export async function queryLMStudio(
 	prompt: string,
@@ -168,10 +184,10 @@ export async function queryLMStudio(
 	const finalConfig = { ...DEFAULT_CONFIG, ...config };
 	const url = `${finalConfig.baseUrl}/v1/chat/completions`;
 
-	// Get the last 10 messages from history (excluding system messages)
+	// Get the last 20 messages from history (excluding system messages)
 	const recentHistory = messageHistory
 		.filter(msg => msg.role !== 'system')
-		.slice(-10);
+		.slice(-20);
 
 	// Build messages array: system prompt first, then history, then current prompt
 	const messages: ChatMessage[] = [
@@ -269,6 +285,31 @@ export async function queryLMStudio(
 		});
 		throw error;
 	}
+}
+
+async function getRepoContext(): Promise<string> {
+	if (repoContextCache !== null) {
+		return repoContextCache;
+	}
+
+	if (!repoContextPromise) {
+		repoContextPromise = (async () => {
+			try {
+				const context = await getCodebaseContext();
+				repoContextCache = context;
+				return context;
+			} catch (error) {
+				logger.error('Failed to build repository context', {
+					error: error instanceof Error ? error.message : String(error),
+					errorStack: error instanceof Error ? error.stack : undefined,
+				});
+				repoContextCache = '';
+				return '';
+			}
+		})();
+	}
+
+	return repoContextPromise;
 }
 
 /**

@@ -4,6 +4,9 @@
   "type": "module",
   "scripts": {
     "dev": "bun --watch ./src/index.ts",
+    "start:wartaqi": "bun src/startWartaqi.ts",
+    "wartaqi:setup": "bun src/wartaqi/setup-db.ts",
+    "wartaqi:import": "bun src/wartaqi/import.ts",
     "drizzle": "drizzle-kit push",
     "test": "bun test",
     "typecheck": "tsc --noEmit",

@@ -1,15 +1,14 @@
 import type { ConversationFlavor } from "@grammyjs/conversations";
-import type { SessionFlavor, Context } from "grammy";
+import type { Context, SessionFlavor } from "grammy";
 
 import type { ChatMessage } from './utils/lmStudio.js';
 
 /* ---------- base context ---------- */
-export type MySession = { 
-	state?: string; 
-	language?: 'en' | 'ar';
-	lmStudioHistory?: ChatMessage[];
-	pendingConversation?: string;
-	inLLMMode?: boolean;
+export type MySession = {
+  state?: string;
+  language?: 'en' | 'ar';
+  lmStudioHistory?: ChatMessage[];
+  pendingConversation?: string;
 };
 export type BaseContext = Context & SessionFlavor<MySession>;
 export type MyContext = BaseContext & ConversationFlavor<BaseContext>;

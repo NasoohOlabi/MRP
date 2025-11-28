@@ -1,0 +1,10 @@
+{
+	"$schema": "https://raw.githubusercontent.com/drizzle-team/drizzle-kit/main/drizzle.config.schema.json",
+	"dialect": "sqlite",
+	"schema": "./src/wartaqi/db/schema.ts",
+	"dbCredentials": {
+		"url": "./wartaqi.db"
+	},
+	"out": "./drizzle/wartaqi"
+}
+
