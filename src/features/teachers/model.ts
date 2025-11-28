@@ -8,25 +8,19 @@ import { teachers as teachersTable } from '../../db/schema.js';
 // Domain model
 export interface Teacher {
 	id: number;
-	firstName: string;
-	lastName: string;
-	phoneNumber: string;
-	group: string;
+	name: string;
 	createdAt: Date;
 	updatedAt: Date;
 }
 
 // Convert database row to domain model
 function toDomain(row: typeof teachersTable.$inferSelect): Teacher {
-	if (!row.id || !row.firstName || !row.lastName || !row.phoneNumber || !row.group || !row.createdAt || !row.updatedAt) {
+	if (!row.id || !row.name || !row.createdAt || !row.updatedAt) {
 		throw new Error('Invalid teacher row: missing required fields');
 	}
 	return {
 		id: row.id,
-		firstName: row.firstName,
-		lastName: row.lastName,
-		phoneNumber: row.phoneNumber,
-		group: row.group,
+		name: row.name,
 		createdAt: new Date(row.createdAt),
 		updatedAt: new Date(row.updatedAt),
 	};
@@ -45,24 +39,16 @@ export class TeacherRepo {
 		return toDomain(rows[0]!);
 	}
 
-	async findByPhone(phoneNumber: string): Promise<Teacher | null> {
-		const rows = await db.select().from(teachersTable).where(eq(teachersTable.phoneNumber, phoneNumber));
+	async findByName(name: string): Promise<Teacher | null> {
+		const rows = await db.select().from(teachersTable).where(eq(teachersTable.name, name));
 		if (rows.length === 0) return null;
 		return toDomain(rows[0]!);
 	}
 
-	async create(data: {
-		firstName: string;
-		lastName: string;
-		phoneNumber: string;
-		group: string;
-	}): Promise<Teacher> {
+	async create(data: { name: string }): Promise<Teacher> {
 		const now = new Date();
 		await db.insert(teachersTable).values({
-			firstName: data.firstName,
-			lastName: data.lastName,
-			phoneNumber: data.phoneNumber,
-			group: data.group,
+			name: data.name,
 			createdAt: now,
 			updatedAt: now,
 		});
@@ -77,10 +63,7 @@ export class TeacherRepo {
 		await db
 			.update(teachersTable)
 			.set({
-				firstName: teacher.firstName,
-				lastName: teacher.lastName,
-				phoneNumber: teacher.phoneNumber,
-				group: teacher.group,
+				name: teacher.name,
 				updatedAt: now,
 			})
 			.where(eq(teachersTable.id, teacher.id));
@@ -96,8 +79,8 @@ export class TeacherRepo {
 	async search(query: string): Promise<FuseResult<Teacher>[]> {
 		const teachers = await this.findAll();
 		const fuse = new Fuse(teachers, {
-			keys: ['firstName', 'lastName', 'group'],
-			threshold: 0.3,
+			keys: ['name'],
+			threshold: 0.4,
 		});
 		return fuse.search(query);
 	}
@@ -115,20 +98,10 @@ export class TeacherService {
 		return this.repo.findById(id);
 	}
 
-	async getByPhone(phoneNumber: string): Promise<Teacher | null> {
-		return this.repo.findByPhone(phoneNumber);
-	}
-
-	async register(params: {
-		firstName: string;
-		lastName: string;
-		phoneNumber: string;
-		group: string;
-	}): Promise<Teacher> {
-		// Check if phone number already exists
-		const existing = await this.repo.findByPhone(params.phoneNumber);
+	async register(params: { name: string }): Promise<Teacher> {
+		const existing = await this.repo.findByName(params.name);
 		if (existing) {
-			throw new Error('Phone number already exists');
+			throw new Error('Teacher already exists');
 		}
 		return this.repo.create(params);
 	}

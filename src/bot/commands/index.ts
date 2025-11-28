@@ -171,7 +171,7 @@ export function registerCommands(bot: Bot<MyContext>): void {
     }
 
     const teacher = await teacherService.getById(student.teacherId);
-    const teacherName = teacher ? ((teacher as any).name || `${(teacher as any).firstName || ''} ${(teacher as any).lastName || ''}`.trim() || `Teacher ${teacher.id}`) : t("student_info_no_teacher", lang);
+    const teacherName = teacher?.name ?? t("student_info_no_teacher", lang);
     const levelText = student.level ? `Level ${student.level}` : t("student_info_no_level", lang) || "No level";
     const message =
       t("student_info_title", lang) +
@@ -268,7 +268,7 @@ async function handleStudentGroupOrTeacher(ctx: MyContext, type: "group" | "teac
   }
 
   const teacher = await teacherService.getById(student.teacherId);
-  const teacherName = teacher ? ((teacher as any).name || `${(teacher as any).firstName || ''} ${(teacher as any).lastName || ''}`.trim() || `Teacher ${teacher.id}`) : t("student_info_no_teacher", lang);
+  const teacherName = teacher?.name ?? t("student_info_no_teacher", lang);
   const message = lang === "ar" ? `**معلمك:** ${teacherName}` : `**Your Teacher:** ${teacherName}`;
   await ctx.reply(message, { parse_mode: "Markdown" });
 }

@@ -53,7 +53,7 @@ export async function viewStudentConversation(
   const student: Student = paginationResult.selectedItem;
   // Get teacher name for display
   const teacher = await teacherService.getById(student.teacherId);
-  const teacherName = teacher ? ((teacher as any).name || `${(teacher as any).firstName || ''} ${(teacher as any).lastName || ''}`.trim() || `Teacher ${teacher.id}`) : `ID: ${student.teacherId}`;
+  const teacherName = teacher?.name ?? `ID: ${student.teacherId}`;
 
   // Prepare base student info
   let message = `

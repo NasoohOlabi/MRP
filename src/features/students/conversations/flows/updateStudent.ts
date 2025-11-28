@@ -58,7 +58,7 @@ export async function updateStudentConversation(
 
   // Get teacher name for display
   const teacher = await teacherService.getById(student.teacherId);
-  const teacherName = teacher ? ((teacher as any).name || `${(teacher as any).firstName || ''} ${(teacher as any).lastName || ''}`.trim() || `Teacher ${teacher.id}`) : `ID: ${student.teacherId}`;
+  const teacherName = teacher?.name ?? `ID: ${student.teacherId}`;
 
   while (true) {
     const currentInfo = `
@@ -193,9 +193,7 @@ async function handleFieldAction(
     const paginationResult = await paginate(conversation, ctx, {
       items: teachers,
       header: (t("select_teacher", lang) || "Select a teacher:") + "\n",
-      renderItem: (teacher) => {
-        return (teacher as any).name || `${(teacher as any).firstName || ''} ${(teacher as any).lastName || ''}`.trim() || `Teacher ${teacher.id}`;
-      },
+      renderItem: (teacher) => teacher.name || `Teacher ${teacher.id}`,
       selectable: true,
       getItemId: (teacher) => `teacher_${teacher.id}`,
       lang,

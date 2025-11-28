@@ -67,8 +67,7 @@ export async function createStudentConversation(conversation: Conversation<BaseC
 
   const teacherKeyboard = new InlineKeyboard();
   for (const teacher of teachers.slice(0, 10)) {
-    // Teachers table has 'name' field, but model may have firstName/lastName - use name if available, otherwise fallback
-    const teacherDisplayName = (teacher as any).name || `${(teacher as any).firstName || ''} ${(teacher as any).lastName || ''}`.trim() || `Teacher ${teacher.id}`;
+    const teacherDisplayName = teacher.name || `Teacher ${teacher.id}`;
     teacherKeyboard.text(teacherDisplayName, `teacher_${teacher.id}`).row();
   }
   teacherKeyboard.text(t("cancel", lang), "cancel");

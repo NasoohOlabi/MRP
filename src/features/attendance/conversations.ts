@@ -6,6 +6,7 @@ import { t } from '../../utils/i18n.js';
 import { browseByEventConversation } from './conversations/flows/browseByEvent.js';
 import { browseByStudentConversation } from './conversations/flows/browseByStudent.js';
 import { markAttendanceConversation } from './conversations/flows/markAttendance.js';
+import { eventAttendanceConversation } from './conversations/flows/takeEventAttendance.js';
 
 // Helper to get user's language
 function getLang(ctx: MyContext): string {
@@ -23,6 +24,7 @@ export async function attendanceConversation(conversation: Conversation<BaseCont
 	// Show menu with options
 	const keyboard = new InlineKeyboard()
 		.text(t('mark_attendance', lang) || 'Mark Attendance', 'mark_attendance').row()
+		.text(t('by_group', lang) || 'By Group', 'by_group').row()
 		.text(t('browse_by_date', lang) || 'Browse by Date', 'browse_by_event').row()
 		.text(t('browse_by_student', lang) || 'Browse by Student', 'browse_by_student').row()
 		.text(t('cancel', lang), 'cancel');
@@ -55,6 +57,8 @@ export async function attendanceConversation(conversation: Conversation<BaseCont
 	// Route to appropriate function
 	if (action === 'mark_attendance') {
 		await markAttendanceConversation(conversation, ctx);
+	} else if (action === 'by_group') {
+		await eventAttendanceConversation(conversation, ctx);
 	} else if (action === 'browse_by_event') {
 		await browseByEventConversation(conversation, ctx);
 	} else if (action === 'browse_by_student') {
