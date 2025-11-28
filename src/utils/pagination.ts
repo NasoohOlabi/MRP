@@ -39,7 +39,7 @@ export async function paginate<T>(
 		renderItem,
 		header = '',
 		selectable = false,
-		getItemId = (item, index) => `item_${index}`,
+		getItemId = (_item, index) => `item_${index}`,
 		lang = ctx.session?.language || 'en',
 		initialPageSize = DEFAULT_PAGE_SIZE,
 		minPageSize = MIN_PAGE_SIZE,
@@ -102,41 +102,41 @@ export async function paginate<T>(
 
 		// Previous page button
 		if (currentPage > 0) {
-			navRow.push({ text: '<', callback_data: 'page_prev' });
+			navRow.push({ text: '◀️', callback_data: 'page_prev' });
 		}
 
 		// Next page button
 		if (currentPage < totalPages - 1) {
-			navRow.push({ text: '>', callback_data: 'page_next' });
+			navRow.push({ text: '▶️', callback_data: 'page_next' });
 		}
 
 		// Decrease page size button
 		if (pageSize > minPageSize) {
-			navRow.push({ text: '^', callback_data: 'size_dec' });
+			navRow.push({ text: '🔼', callback_data: 'size_dec' });
 		}
 
 		// Increase page size button
 		if (pageSize < maxPageSize && pageSize < items.length) {
-			navRow.push({ text: 'v', callback_data: 'size_inc' });
+			navRow.push({ text: '🔽', callback_data: 'size_inc' });
 		}
 
 		// Add navigation buttons in 2x2 grid
 		if (navRow.length > 0) {
 			if (navRow.length === 1) {
-				keyboard.text(navRow[0].text, navRow[0].callback_data);
+				keyboard.text(navRow[0]!.text, navRow[0]!.callback_data);
 			} else if (navRow.length === 2) {
-				keyboard.text(navRow[0].text, navRow[0].callback_data)
-					.text(navRow[1].text, navRow[1].callback_data);
+				keyboard.text(navRow[0]!.text, navRow[0]!.callback_data)
+					.text(navRow[1]!.text, navRow[1]!.callback_data);
 			} else if (navRow.length === 3) {
-				keyboard.text(navRow[0].text, navRow[0].callback_data)
-					.text(navRow[1].text, navRow[1].callback_data).row()
-					.text(navRow[2].text, navRow[2].callback_data);
+				keyboard.text(navRow[0]!.text, navRow[0]!.callback_data)
+					.text(navRow[1]!.text, navRow[1]!.callback_data).row()
+					.text(navRow[2]!.text, navRow[2]!.callback_data);
 			} else {
 				// 4 buttons: 2x2 grid
-				keyboard.text(navRow[0].text, navRow[0].callback_data)
-					.text(navRow[1].text, navRow[1].callback_data).row()
-					.text(navRow[2].text, navRow[2].callback_data)
-					.text(navRow[3].text, navRow[3].callback_data);
+				keyboard.text(navRow[0]!.text, navRow[0]!.callback_data)
+					.text(navRow[1]!.text, navRow[1]!.callback_data).row()
+					.text(navRow[2]!.text, navRow[2]!.callback_data)
+					.text(navRow[3]!.text, navRow[3]!.callback_data);
 			}
 		}
 

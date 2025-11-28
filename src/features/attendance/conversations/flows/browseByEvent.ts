@@ -74,7 +74,7 @@ export async function browseByEventConversation(conversation: Conversation<BaseC
 		const presentCount = records.filter(r => r.status === 'present').length;
 		const absentCount = records.filter(r => r.status === 'absent').length;
 
-		const header = `**${t('attendance_for', lang) || 'Attendance for'} ${date}**\n\n` +
+		const header = `**${t('attendance_for', lang, { event: date })}**\n\n` +
 			`**${t('present', lang) || 'Present'}**: ${presentCount} | **${t('absent', lang) || 'Absent'}**: ${absentCount}\n`;
 
 		// Use pagination helper

@@ -87,7 +87,7 @@ export async function browseByStudentConversation(conversation: Conversation<Bas
 		}
 
 		// Build message
-		let message = `**${t('attendance_for', lang) || 'Attendance for'} ${student.firstName} ${student.lastName}**\n\n`;
+		let message = `**${t('attendance_for', lang, { event: `${student.firstName} ${student.lastName}` })}**\n\n`;
 
 		// Sort dates descending
 		const sortedDates = Object.keys(attendanceByDate).sort().reverse();
