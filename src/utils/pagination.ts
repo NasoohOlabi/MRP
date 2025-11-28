@@ -56,7 +56,7 @@ export async function paginate<T>(
 	let messageId: number | undefined;
 	let chatId: number | undefined;
 
-	const totalPages = Math.ceil(items.length / pageSize);
+	const getTotalPages = () => Math.ceil(items.length / pageSize);
 
 	const buildMessage = (): string => {
 		const start = currentPage * pageSize;
@@ -73,6 +73,7 @@ export async function paginate<T>(
 			message += `${renderItem(item, globalIndex)}\n`;
 		});
 
+		const totalPages = getTotalPages();
 		message += `\n${t('page_info', lang).replace('{current}', String(currentPage + 1)).replace('{total}', String(totalPages))}`;
 
 		return message;
@@ -104,6 +105,8 @@ export async function paginate<T>(
 		if (currentPage > 0) {
 			navRow.push({ text: '◀️', callback_data: 'page_prev' });
 		}
+
+		const totalPages = getTotalPages();
 
 		// Next page button
 		if (currentPage < totalPages - 1) {
@@ -210,7 +213,7 @@ export async function paginate<T>(
 				currentPage--;
 			}
 		} else if (data === 'page_next') {
-			if (currentPage < totalPages - 1) {
+			if (currentPage < getTotalPages() - 1) {
 				currentPage++;
 			}
 		} else if (data === 'size_dec') {
