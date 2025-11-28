@@ -267,10 +267,6 @@ async function runGroupAttendanceSession(
 			`Event: ${eventName}`,
 			`Date: ${date}`,
 			`Marked: ✅ ${presentCount} | ❌ ${absentCount} | Pending: ${pendingCount}`,
-			'Students:',
-			...pendingStudents.map((student, index) =>
-				`${index + 1}. ${student.firstName} ${student.lastName}   ❌   ✅`
-			),
 		];
 
 		if (pendingStudents.length === 0) {
