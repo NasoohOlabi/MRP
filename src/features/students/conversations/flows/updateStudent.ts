@@ -2,10 +2,10 @@ import { InlineKeyboard } from "grammy";
 import type { Conversation } from "@grammyjs/conversations";
 import type { BaseContext, MyContext } from "../../../../types.js";
 import { t } from "../../../../utils/i18n.js";
+import { paginate } from "../../../../utils/pagination.js";
 import { Student } from "../model.js";
 import { teacherService } from "../../../../bot/services.js";
 import {
-  buildStudentKeyboard,
   deleteMenuMessage,
   getLang,
   studentService,
@@ -33,32 +33,26 @@ export async function updateStudentConversation(
     return;
   }
 
-  const keyboard = buildStudentKeyboard(
-    results.map((result) => result.item),
-    lang
-  );
+  const students = results.map(r => r.item);
 
-  await ctx.reply(t("select_student", lang), { reply_markup: keyboard });
+  // Use pagination helper for student selection
+  const paginationResult = await paginate(conversation, ctx, {
+    items: students,
+    header: t("select_student", lang) + "\n",
+    renderItem: (student) => {
+      return `${student.firstName} ${student.lastName}${student.level ? ` (Level ${student.level})` : ""}`;
+    },
+    selectable: true,
+    getItemId: (student) => `student_${student.id}`,
+    lang,
+  });
 
-  const btnCtx = await conversation.wait();
-  const selectedData = btnCtx.callbackQuery?.data;
-
-  if (!selectedData || selectedData === "cancel") {
-    await btnCtx.answerCallbackQuery();
+  if (paginationResult.cancelled || !paginationResult.selectedItem) {
     await ctx.reply(t("operation_cancelled", lang));
     return;
   }
 
-  await btnCtx.answerCallbackQuery();
-  await deleteMenuMessage(ctx, btnCtx);
-
-  const studentId = parseInt(selectedData.replace("student_", ""));
-  let student: Student | null = await studentService.getById(studentId);
-
-  if (!student) {
-    await ctx.reply(t("operation_failed", lang));
-    return;
-  }
+  let student: Student = paginationResult.selectedItem;
 
   const updates: Partial<Student> = {};
 
@@ -195,32 +189,25 @@ async function handleFieldAction(
       return student;
     }
 
-    const teacherKeyboard = new InlineKeyboard();
-    for (const teacher of teachers.slice(0, 10)) {
-      const teacherDisplayName = (teacher as any).name || `${(teacher as any).firstName || ''} ${(teacher as any).lastName || ''}`.trim() || `Teacher ${teacher.id}`;
-      teacherKeyboard.text(teacherDisplayName, `teacher_${teacher.id}`).row();
+    // Use pagination helper for teacher selection
+    const paginationResult = await paginate(conversation, ctx, {
+      items: teachers,
+      header: (t("select_teacher", lang) || "Select a teacher:") + "\n",
+      renderItem: (teacher) => {
+        return (teacher as any).name || `${(teacher as any).firstName || ''} ${(teacher as any).lastName || ''}`.trim() || `Teacher ${teacher.id}`;
+      },
+      selectable: true,
+      getItemId: (teacher) => `teacher_${teacher.id}`,
+      lang,
+    });
+
+    if (paginationResult.cancelled || !paginationResult.selectedItem) {
+      return student;
     }
-    teacherKeyboard.text(t("cancel", lang), "teacher_cancel");
 
-    await ctx.reply(t("select_teacher", lang) || "Select a teacher:", { reply_markup: teacherKeyboard });
-    const teacherCtx = await conversation.wait();
-    const teacherAction = teacherCtx.callbackQuery?.data;
-
-    await teacherCtx.answerCallbackQuery();
-    await deleteMenuMessage(ctx, teacherCtx);
-
-    if (teacherAction && teacherAction.startsWith("teacher_")) {
-      if (teacherAction === "teacher_cancel") {
-        return student;
-      } else {
-        const selectedTeacherId = parseInt(teacherAction.substring(8));
-        if (!isNaN(selectedTeacherId)) {
-          updates.teacherId = selectedTeacherId;
-          return { ...student, teacherId: selectedTeacherId };
-        }
-      }
-    }
-    return student;
+    const selectedTeacher = paginationResult.selectedItem;
+    updates.teacherId = selectedTeacher.id;
+    return { ...student, teacherId: selectedTeacher.id };
   }
 
   if (action === "field_phone" && newValue) {

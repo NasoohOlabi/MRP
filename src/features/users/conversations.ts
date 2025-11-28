@@ -4,6 +4,7 @@ import { InlineKeyboard } from 'grammy';
 import { requireAdmin } from '../../features/auth/model.js';
 import type { BaseContext, MyContext } from '../../types.js';
 import { t } from '../../utils/i18n.js';
+import { paginate } from '../../utils/pagination.js';
 import { UserService, type UserRole } from './model.js';
 
 const userService = new UserService();
@@ -340,7 +341,7 @@ export async function assignRoleConversation(conversation: Conversation<BaseCont
 /**
  * Admin: List all users
  */
-export async function listUsersConversation(_conversation: Conversation<BaseContext, MyContext>, ctx: MyContext) {
+export async function listUsersConversation(conversation: Conversation<BaseContext, MyContext>, ctx: MyContext) {
 	const lang = getLang(ctx);
 
 	if (!(await requireAdmin(ctx))) {
@@ -358,17 +359,20 @@ export async function listUsersConversation(_conversation: Conversation<BaseCont
 		return;
 	}
 
-	const userList = allUsers.map((user, index) => {
-		const roleText = getRoleLabel(user.role as UserRole, lang);
-		const statusText = lang === 'ar' ? (user.isActive ? 'نشط' : 'غير نشط') : (user.isActive ? 'Active' : 'Inactive');
-		return `${index + 1}. ${user.firstName} ${user.lastName || ''} (${roleText}) - ${statusText}`;
-	}).join('\n');
+	const header = lang === 'ar'
+		? '**قائمة المستخدمين**\n'
+		: '**Users List**\n';
 
-	await ctx.reply(
-		lang === 'ar'
-			? `**قائمة المستخدمين**\n\n${userList}`
-			: `**Users List**\n\n${userList}`,
-		{ parse_mode: 'Markdown' }
-	);
+	await paginate(conversation, ctx, {
+		items: allUsers,
+		header,
+		renderItem: (user, index) => {
+			const roleText = getRoleLabel(user.role as UserRole, lang);
+			const statusText = lang === 'ar' ? (user.isActive ? 'نشط' : 'غير نشط') : (user.isActive ? 'Active' : 'Inactive');
+			return `${index + 1}. ${user.firstName} ${user.lastName || ''} (${roleText}) - ${statusText}`;
+		},
+		selectable: false,
+		lang,
+	});
 }
 

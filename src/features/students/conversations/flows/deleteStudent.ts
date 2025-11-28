@@ -2,9 +2,9 @@ import { InlineKeyboard } from "grammy";
 import type { Conversation } from "@grammyjs/conversations";
 import type { BaseContext, MyContext } from "../../../../types.js";
 import { t } from "../../../../utils/i18n.js";
+import { paginate } from "../../../../utils/pagination.js";
 import { Student } from "../model.js";
 import {
-  buildStudentKeyboard,
   deleteMenuMessage,
   getLang,
   studentService,
@@ -32,32 +32,26 @@ export async function deleteStudentConversation(
     return;
   }
 
-  const keyboard = buildStudentKeyboard(
-    results.map((result) => result.item),
-    lang
-  );
+  const students = results.map(r => r.item);
 
-  await ctx.reply(t("select_student", lang), { reply_markup: keyboard });
+  // Use pagination helper for student selection
+  const paginationResult = await paginate(conversation, ctx, {
+    items: students,
+    header: t("select_student", lang) + "\n",
+    renderItem: (student) => {
+      return `${student.firstName} ${student.lastName}${student.level ? ` (Level ${student.level})` : ""}`;
+    },
+    selectable: true,
+    getItemId: (student) => `student_${student.id}`,
+    lang,
+  });
 
-  const btnCtx = await conversation.wait();
-  const selectedData = btnCtx.callbackQuery?.data;
-
-  if (!selectedData || selectedData === "cancel") {
-    await btnCtx.answerCallbackQuery();
+  if (paginationResult.cancelled || !paginationResult.selectedItem) {
     await ctx.reply(t("operation_cancelled", lang));
     return;
   }
 
-  await btnCtx.answerCallbackQuery();
-  await deleteMenuMessage(ctx, btnCtx);
-
-  const studentId = parseInt(selectedData.replace("student_", ""));
-  const student: Student | null = await studentService.getById(studentId);
-
-  if (!student) {
-    await ctx.reply(t("operation_failed", lang));
-    return;
-  }
+  const student: Student = paginationResult.selectedItem;
 
   const confirmKeyboard = new InlineKeyboard()
     .text(t("confirm_delete_yes", lang), "confirm_delete")
@@ -80,7 +74,7 @@ export async function deleteStudentConversation(
   if (confirmation === "confirm_delete") {
     await ctx.reply(t("processing", lang));
     try {
-      await studentService.remove(studentId);
+      await studentService.remove(student.id);
       await ctx.reply(t("operation_completed", lang));
     } catch (err) {
       await ctx.reply(t("operation_failed", lang));

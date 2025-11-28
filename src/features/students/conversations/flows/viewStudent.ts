@@ -2,10 +2,9 @@ import type { Conversation } from "@grammyjs/conversations";
 import { attendanceService, teacherService } from "../../../../bot/services.js";
 import type { BaseContext, MyContext } from "../../../../types.js";
 import { t } from "../../../../utils/i18n.js";
+import { paginate } from "../../../../utils/pagination.js";
 import type { Student } from "../../model.js";
 import {
-  buildStudentKeyboard,
-  deleteMenuMessage,
   getLang,
   studentService,
 } from "../helpers.js";
@@ -32,32 +31,26 @@ export async function viewStudentConversation(
     return;
   }
 
-  const keyboard = buildStudentKeyboard(
-    results.map((result) => result.item),
-    lang
-  );
+  const students = results.map(r => r.item);
 
-  await ctx.reply(t("select_student", lang), { reply_markup: keyboard });
+  // Use pagination helper for student selection
+  const paginationResult = await paginate(conversation, ctx, {
+    items: students,
+    header: t("select_student", lang) + "\n",
+    renderItem: (student) => {
+      return `${student.firstName} ${student.lastName}${student.level ? ` (Level ${student.level})` : ""}`;
+    },
+    selectable: true,
+    getItemId: (student) => `student_${student.id}`,
+    lang,
+  });
 
-  const btnCtx = await conversation.wait();
-  const selectedData = btnCtx.callbackQuery?.data;
-
-  if (!selectedData || selectedData === "cancel") {
-    await btnCtx.answerCallbackQuery();
+  if (paginationResult.cancelled || !paginationResult.selectedItem) {
     await ctx.reply(t("operation_cancelled", lang));
     return;
   }
 
-  await btnCtx.answerCallbackQuery();
-  await deleteMenuMessage(ctx, btnCtx);
-
-  const studentId = parseInt(selectedData.replace("student_", ""));
-  const student: Student | null = await studentService.getById(studentId);
-
-  if (!student) {
-    await ctx.reply(t("operation_failed", lang));
-    return;
-  }
+  const student: Student = paginationResult.selectedItem;
   // Get teacher name for display
   const teacher = await teacherService.getById(student.teacherId);
   const teacherName = teacher ? ((teacher as any).name || `${(teacher as any).firstName || ''} ${(teacher as any).lastName || ''}`.trim() || `Teacher ${teacher.id}`) : `ID: ${student.teacherId}`;
@@ -90,9 +83,12 @@ ${t("student_info_teacher", lang) || "Teacher"}: ${teacherName}
           absent.push(rec.date);
         }
       }
+      const total = present.length + absent.length;
+      const percentage = total > 0 ? Math.round((present.length / total) * 100) : 0;
+
       message += `\n\n${t("attendance_summary", lang) || "Attendance Summary"}\n\n`;
       if (present.length > 0) {
-        message += `**${t("present", lang) || "Present"}**: ${present.length}\n`;
+        message += `**✅**: ${present.length}\n`;
         const recentDates = present
           .slice()
           .sort()
@@ -101,7 +97,7 @@ ${t("student_info_teacher", lang) || "Teacher"}: ${teacherName}
         message += `${t("recent_label", lang) || "Recent"}: ${recentDates.join(", ")}\n\n`;
       }
       if (absent.length > 0) {
-        message += `**${t("absent", lang) || "Absent"}**: ${absent.length}\n`;
+        message += `**❌**: ${absent.length}\n`;
         const recentDates = absent
           .slice()
           .sort()
@@ -109,6 +105,9 @@ ${t("student_info_teacher", lang) || "Teacher"}: ${teacherName}
           .slice(0, 10);
         message += `${t("recent_label", lang) || "Recent"}: ${recentDates.join(", ")}\n\n`;
       }
+
+      // Add summary at the end
+      message += `**${present.length}/${total} ~ ${percentage}%**\n`;
     }
   } catch {
     // Ignore attendance fetch errors
