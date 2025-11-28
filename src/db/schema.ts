@@ -42,9 +42,7 @@ export const users = sqliteTable('users', {
 	isActive: integer('is_active').notNull().default(1),
 	createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(strftime('%s', 'now'))`),
 	updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(strftime('%s', 'now'))`),
-}, (table) => [
-	index('idx_users_telegram_user_id').on(table.telegramUserId),
-]);
+});
 
 // Notebook deliveries table - tracks which students received notebooks for which level
 export const notebookDeliveries = sqliteTable(

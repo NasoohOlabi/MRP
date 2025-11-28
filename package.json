@@ -8,7 +8,7 @@
     "start": "bun ./src/index.ts",
     "wartaqi:setup": "bun src/wartaqi/setup-db.ts",
     "wartaqi:import": "bun src/wartaqi/import.ts",
-    "drizzle": "drizzle-kit push",
+    "drizzle": "bunx drizzle-kit push --config drizzle.config.json",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
     "build": "bun build ./src/index.ts --outdir ./dist --target bun"

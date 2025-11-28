@@ -1,10 +1,8 @@
 // Wartaqi Bot Entry Point
 import 'dotenv/config';
 import { startWartaqiBot as startWartaqiConversationsBot } from './bot/wartaqi/index.js';
-import { initializeWartaqiSchema } from './db/init';
 
 export async function startWartaqiBot(): Promise<void> {
-  await initializeWartaqiSchema();
   await startWartaqiConversationsBot();
 }
 

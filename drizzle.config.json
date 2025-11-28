@@ -1,1 +1,8 @@
-{"dialect": "sqlite","schema": "./src/db/schema.ts","dbCredentials": {"url": "./data.db"}}
+{
+	"dialect": "sqlite",
+	"schema": "./src/db/schema.ts",
+	"out": "./drizzle/wartaqi",
+	"dbCredentials": {
+		"url": "./wartaqi.db"
+	}
+}
