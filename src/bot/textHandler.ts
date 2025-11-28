@@ -1,7 +1,7 @@
 import type { Bot } from "grammy";
-import type { MyContext } from "../types.js";
-import type { User } from "../features/users/model.js";
 import { getCurrentUser, requireAdmin, requireTeacher } from "../features/auth/model.js";
+import type { User } from "../features/users/model.js";
+import type { MyContext } from "../types.js";
 import {
 	buildHelpReply,
 	isHelpQuestion,
@@ -9,10 +9,7 @@ import {
 import { t } from "../utils/i18n.js";
 import {
 	type ChatMessage,
-	classifyIntent,
-	createSystemPrompt,
-	queryLMStudio,
-	sanitizeTelegramMarkdown,
+	classifyIntent
 } from "../utils/lmStudio.js";
 import { logger } from "../utils/logger.js";
 import { getLang } from "./helpers.js";
@@ -27,6 +24,7 @@ const intentRoutes: Record<
 };
 
 const MAX_HISTORY_LENGTH = 20;
+type LlmFallbackReason = "unhandled_message" | "handler_error";
 
 export function registerTextHandler(bot: Bot<MyContext>): void {
 	bot.on("callback_query:data", async (ctx) => {
@@ -72,6 +70,50 @@ export function registerTextHandler(bot: Bot<MyContext>): void {
 				reason,
 				error,
 			});
+
+		// Local fallback handler to respond when the LLM can't provide a result
+		// or when an error/unhandled case occurs. This replaces the missing external
+		// `respondWithLLMFallback` symbol.
+		function respondWithLLMFallback(
+			ctx: any,
+			payload: {
+				messageText: string;
+				lang: "en" | "ar";
+				user: User | null;
+				reason: LlmFallbackReason;
+				error?: unknown;
+			}
+		): Promise<any> {
+			const { messageText, lang, user, reason, error } = payload;
+			let reply: string;
+			switch (reason) {
+				case "unhandled_message":
+					reply = lang === "ar"
+						? "لم أتمكن من فهم رسالتك. من فضلك أعد صياغة سؤالك."
+						: "I couldn't understand your message. Please rephrase your question.";
+					break;
+				case "handler_error":
+					reply = lang === "ar"
+						? "حدث خطأ أثناء معالجة رسالتك. حاول مرة أخرى."
+						: "An error occurred while processing your message. Please try again.";
+					break;
+				default:
+					reply = lang === "ar"
+						? "حدث خطأ غير متوقع."
+						: "An unexpected error occurred.";
+			}
+			if (error && typeof error === "object" && "message" in error) {
+				reply += ` ${String((error as any).message)}`;
+			}
+			// Log and respond
+			logger.info("llm-fallback-reply", {
+				userId: (user as any)?.id,
+				language: lang,
+				reason,
+				originalMessage: messageText,
+			});
+			return ctx.reply(reply);
+		}
 
 		try {
 			currentUser = await getCurrentUser(ctx);
@@ -122,6 +164,21 @@ function appendLmHistory(ctx: MyContext, entries: ChatMessage[]) {
 	ctx.session.lmStudioHistory = [...(ctx.session.lmStudioHistory || []), ...entries];
 	if (ctx.session.lmStudioHistory.length > MAX_HISTORY_LENGTH) {
 		ctx.session.lmStudioHistory = ctx.session.lmStudioHistory.slice(-MAX_HISTORY_LENGTH);
+	}
+}
+
+function exitLLMMode(ctx: MyContext): void {
+	// Reset any LLM-related session state when switching intents
+	if (!ctx.session) return;
+	ctx.session.state = undefined;
+	ctx.session.lmStudioHistory = [];
+	// Optional: log for traceability
+	try {
+		const userId = ctx.from?.id;
+		const chatId = ctx.chat?.id;
+		logger.info("exit-llm-mode", { userId, chatId });
+	} catch {
+		// ignore logging issues
 	}
 }
 

@@ -24,10 +24,27 @@ export const students = sqliteTable(
 		createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(strftime('%s', 'now'))`),
 		updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(strftime('%s', 'now'))`),
 	},
-	(table) => ({
-		teacherIdx: index('idx_students_teacher_id').on(table.teacherId),
-	}),
+	(table) => [
+		index('idx_students_teacher_id').on(table.teacherId),
+	],
 );
+
+// Users table - stores bot user accounts and role assignments
+export const users = sqliteTable('users', {
+	id: integer('id').primaryKey(),
+	telegramUserId: integer('telegram_user_id').notNull().unique(),
+	firstName: text('first_name', { length: 255 }).notNull(),
+	lastName: text('last_name', { length: 255 }),
+	role: text('role', { length: 20 }).notNull().default('student'),
+	phone: text('phone', { length: 20 }),
+	linkedStudentId: integer('linked_student_id').references(() => students.id, { onDelete: 'set null' }),
+	linkedTeacherId: integer('linked_teacher_id').references(() => teachers.id, { onDelete: 'set null' }),
+	isActive: integer('is_active').notNull().default(1),
+	createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(strftime('%s', 'now'))`),
+	updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(strftime('%s', 'now'))`),
+}, (table) => [
+	index('idx_users_telegram_user_id').on(table.telegramUserId),
+]);
 
 // Notebook deliveries table - tracks which students received notebooks for which level
 export const notebookDeliveries = sqliteTable(
@@ -40,9 +57,9 @@ export const notebookDeliveries = sqliteTable(
 		createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(strftime('%s', 'now'))`),
 		updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(strftime('%s', 'now'))`),
 	},
-	(table) => ({
-		studentIdx: index('idx_notebook_deliveries_student_id').on(table.studentId),
-	}),
+	(table) => [
+		index('idx_notebook_deliveries_student_id').on(table.studentId),
+	],
 );
 
 // Attendance table
@@ -57,10 +74,10 @@ export const attendance = sqliteTable(
 		createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(strftime('%s', 'now'))`),
 		updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(strftime('%s', 'now'))`),
 	},
-	(table) => ({
-		studentIdx: index('idx_attendance_student_id').on(table.studentId),
-		dateIdx: index('idx_attendance_date').on(table.date),
-	}),
+	(table) => [
+		index('idx_attendance_student_id').on(table.studentId),
+		index('idx_attendance_date').on(table.date),
+	],
 );
 
 // Define relations
@@ -75,6 +92,17 @@ export const studentsRelations = relations(students, ({ one, many }) => ({
 	}),
 	notebookDeliveries: many(notebookDeliveries),
 	attendanceRecords: many(attendance),
+}));
+
+export const usersRelations = relations(users, ({ one }) => ({
+	linkedStudent: one(students, {
+		fields: [users.linkedStudentId],
+		references: [students.id],
+	}),
+	linkedTeacher: one(teachers, {
+		fields: [users.linkedTeacherId],
+		references: [teachers.id],
+	}),
 }));
 
 export const notebookDeliveriesRelations = relations(notebookDeliveries, ({ one }) => ({

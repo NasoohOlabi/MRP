@@ -178,7 +178,7 @@ dist
 credentials.json
 
 
-data.db
+*.db
 
 *.csv
 *.xlsx
