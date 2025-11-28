@@ -7,7 +7,7 @@
     "start:wartaqi": "bun src/startWartaqi.ts",
     "start": "bun ./src/index.ts",
     "wartaqi:setup": "bun src/wartaqi/setup-db.ts",
-    "wartaqi:import": "bun src/wartaqi/import.ts",
+    "wartaqi:import": "bun scripts/importWartaqi.ts",
     "drizzle": "bunx drizzle-kit push --config drizzle.config.json",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
