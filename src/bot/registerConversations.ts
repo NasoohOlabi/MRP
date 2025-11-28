@@ -1,7 +1,7 @@
 import { createConversation } from "@grammyjs/conversations";
 import type { Bot } from "grammy";
 import { attendanceConversation } from "../features/attendance/conversations.js";
-import { studentMenuConversation } from "../features/students/conversations/index.js";
+import { studentMenuConversation } from "../features/students/conversations/menu.js";
 import { teacherMenuConversation } from "../features/teachers/conversations.js";
 import {
   assignRoleConversation,

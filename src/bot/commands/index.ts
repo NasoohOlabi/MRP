@@ -170,20 +170,13 @@ export function registerCommands(bot: Bot<MyContext>): void {
       return;
     }
 
-    let teacherName = t("student_info_no_teacher", lang);
-    if (student.group) {
-      const teachers = await teacherService.getAll();
-      const found = teachers.find((tchr) => tchr.group === student.group);
-      if (found) {
-        teacherName = `${found.firstName} ${found.lastName}`;
-      }
-    }
-
-    const groupText = student.group || t("student_info_no_group", lang);
+    const teacher = await teacherService.getById(student.teacherId);
+    const teacherName = teacher ? ((teacher as any).name || `${(teacher as any).firstName || ''} ${(teacher as any).lastName || ''}`.trim() || `Teacher ${teacher.id}`) : t("student_info_no_teacher", lang);
+    const levelText = student.level ? `Level ${student.level}` : t("student_info_no_level", lang) || "No level";
     const message =
       t("student_info_title", lang) +
       `\n\n${t("student_info_name", lang).replace("{name}", `${student.firstName} ${student.lastName}`)}\n` +
-      `${t("student_info_group", lang).replace("{group}", groupText)}\n` +
+      `${t("student_info_level", lang) || "Level"}: ${levelText}\n` +
       `${t("student_info_teacher", lang).replace("{teacher}", teacherName)}`;
 
     await ctx.reply(message, { parse_mode: "Markdown" });
@@ -219,8 +212,8 @@ export function registerCommands(bot: Bot<MyContext>): void {
     const recordsText = records
       .map((r) =>
         t("my_attendance_record", lang)
-          .replace("{event}", r.event)
-          .replace("{date}", formatDate(r.createdAt, lang))
+          .replace("{status}", r.status === 'present' ? (t("present", lang) || "Present") : (t("absent", lang) || "Absent"))
+          .replace("{date}", r.date)
       )
       .join("\n");
 
@@ -268,20 +261,14 @@ async function handleStudentGroupOrTeacher(ctx: MyContext, type: "group" | "teac
   }
 
   if (type === "group") {
-    const groupText = student.group || t("student_info_no_group", lang);
-    const message = lang === "ar" ? `**مجموعتك:** ${groupText}` : `**Your Group:** ${groupText}`;
+    const levelText = student.level ? `Level ${student.level}` : (t("student_info_no_level", lang) || "No level");
+    const message = lang === "ar" ? `**مستواك:** ${levelText}` : `**Your Level:** ${levelText}`;
     await ctx.reply(message, { parse_mode: "Markdown" });
     return;
   }
 
-  let teacherName = t("student_info_no_teacher", lang);
-  if (student.group) {
-    const teachers = await teacherService.getAll();
-    const teacher = teachers.find((tchr) => tchr.group === student.group);
-    if (teacher) {
-      teacherName = `${teacher.firstName} ${teacher.lastName}`;
-    }
-  }
+  const teacher = await teacherService.getById(student.teacherId);
+  const teacherName = teacher ? ((teacher as any).name || `${(teacher as any).firstName || ''} ${(teacher as any).lastName || ''}`.trim() || `Teacher ${teacher.id}`) : t("student_info_no_teacher", lang);
   const message = lang === "ar" ? `**معلمك:** ${teacherName}` : `**Your Teacher:** ${teacherName}`;
   await ctx.reply(message, { parse_mode: "Markdown" });
 }

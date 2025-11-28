@@ -1,4 +1,5 @@
 import type { Conversation } from "@grammyjs/conversations";
+import { attendanceService, teacherService } from "../../../../bot/services.js";
 import type { BaseContext, MyContext } from "../../../../types.js";
 import { t } from "../../../../utils/i18n.js";
 import type { Student } from "../../model.js";
@@ -8,7 +9,6 @@ import {
   getLang,
   studentService,
 } from "../helpers.js";
-import { attendanceService } from "../../../../bot/services.js";
 
 export async function viewStudentConversation(
   conversation: Conversation<BaseContext, MyContext>,
@@ -58,17 +58,20 @@ export async function viewStudentConversation(
     await ctx.reply(t("operation_failed", lang));
     return;
   }
+  // Get teacher name for display
+  const teacher = await teacherService.getById(student.teacherId);
+  const teacherName = teacher ? ((teacher as any).name || `${(teacher as any).firstName || ''} ${(teacher as any).lastName || ''}`.trim() || `Teacher ${teacher.id}`) : `ID: ${student.teacherId}`;
+
   // Prepare base student info
   let message = `
 ${t("student_info_title", lang)}
 
 ${t("student_info_id", lang)}: ${student.id}
 ${t("student_info_name", lang)}: ${student.firstName} ${student.lastName}
-${t("student_info_birth_year", lang)}: ${student.birthYear}
-${t("student_info_group", lang)}: ${student.group || t("no_value", lang)}
+${t("student_info_birth_year", lang)}: ${student.birthYear || t("no_value", lang)}
+${t("student_info_level", lang) || "Level"}: ${student.level || t("no_value", lang)}
 ${t("student_info_phone", lang)}: ${student.phone || t("no_value", lang)}
-${t("student_info_father_phone", lang)}: ${student.fatherPhone || t("no_value", lang)}
-${t("student_info_mother_phone", lang)}: ${student.motherPhone || t("no_value", lang)}
+${t("student_info_teacher", lang) || "Teacher"}: ${teacherName}
   `.trim();
 
   // Attendance summary
@@ -78,25 +81,33 @@ ${t("student_info_mother_phone", lang)}: ${student.motherPhone || t("no_value", 
     });
     const records = attendanceResult.records;
     if (records.length > 0) {
-      const byEvent: Record<string, Date[]> = {};
+      const present: string[] = [];
+      const absent: string[] = [];
       for (const rec of records) {
-        const eventName = rec.event;
-        if (!eventName) continue;
-        if (!byEvent[eventName]) byEvent[eventName] = [];
-        byEvent[eventName].push(new Date(rec.createdAt));
+        if (rec.status === 'present') {
+          present.push(rec.date);
+        } else {
+          absent.push(rec.date);
+        }
       }
-      message += `\n\n${t("attendance_summary", lang)}\n\n`;
-      const sorted = Object.entries(byEvent).sort(([a], [b]) => a.localeCompare(b));
-      for (const [eventName, dates] of sorted) {
-        const timeKey =
-          dates.length === 1 ? "attendance_times_single" : "attendance_times_multiple";
-        message += `**${eventName}**: ${dates.length} ${t(timeKey, lang)}\n`;
-        const recentDates = dates
+      message += `\n\n${t("attendance_summary", lang) || "Attendance Summary"}\n\n`;
+      if (present.length > 0) {
+        message += `**${t("present", lang) || "Present"}**: ${present.length}\n`;
+        const recentDates = present
           .slice()
-          .sort((a, b) => b.getTime() - a.getTime())
-          .slice(0, 5)
-          .map((d) => d.toISOString().split("T")[0]);
-        message += `${t("recent_label", lang)}: ${recentDates.join(", ")}\n\n`;
+          .sort()
+          .reverse()
+          .slice(0, 10);
+        message += `${t("recent_label", lang) || "Recent"}: ${recentDates.join(", ")}\n\n`;
+      }
+      if (absent.length > 0) {
+        message += `**${t("absent", lang) || "Absent"}**: ${absent.length}\n`;
+        const recentDates = absent
+          .slice()
+          .sort()
+          .reverse()
+          .slice(0, 10);
+        message += `${t("recent_label", lang) || "Recent"}: ${recentDates.join(", ")}\n\n`;
       }
     }
   } catch {

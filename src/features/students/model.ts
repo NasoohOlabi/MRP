@@ -10,11 +10,10 @@ export interface Student {
 	id: number;
 	firstName: string;
 	lastName: string;
-	birthYear: number;
-	group: string | null;
+	birthYear: number | null;
 	phone: string | null;
-	fatherPhone: string | null;
-	motherPhone: string | null;
+	level: number | null; // 1-4
+	teacherId: number;
 	createdAt: Date;
 	updatedAt: Date;
 }
@@ -40,11 +39,10 @@ function toDomain(row: typeof studentsTable.$inferSelect): Student {
 		id: row.id,
 		firstName: String(row.firstName),
 		lastName: String(row.lastName),
-		birthYear: row.birthYear ?? 0,
-		group: row.group ? String(row.group) : null,
+		birthYear: row.birthYear ?? null,
 		phone: row.phone ?? null,
-		fatherPhone: row.fatherPhone ?? null,
-		motherPhone: row.motherPhone ?? null,
+		level: row.level ?? null,
+		teacherId: row.teacherId,
 		createdAt,
 		updatedAt,
 	};
@@ -75,21 +73,19 @@ export class StudentRepo {
 	async create(data: {
 		firstName: string;
 		lastName: string;
-		birthYear: number;
-		group?: string | null;
+		birthYear?: number | null;
 		phone?: string | null;
-		fatherPhone?: string | null;
-		motherPhone?: string | null;
+		level?: number | null;
+		teacherId: number;
 	}): Promise<Student> {
 		const now = new Date();
 		await db.insert(studentsTable).values({
 			firstName: data.firstName,
 			lastName: data.lastName,
-			birthYear: data.birthYear,
-			group: data.group ?? null,
+			birthYear: data.birthYear ?? null,
 			phone: data.phone ?? null,
-			fatherPhone: data.fatherPhone ?? null,
-			motherPhone: data.motherPhone ?? null,
+			level: data.level ?? null,
+			teacherId: data.teacherId,
 			createdAt: now,
 			updatedAt: now,
 		});
@@ -107,10 +103,9 @@ export class StudentRepo {
 				firstName: student.firstName,
 				lastName: student.lastName,
 				birthYear: student.birthYear,
-				group: student.group,
 				phone: student.phone,
-				fatherPhone: student.fatherPhone,
-				motherPhone: student.motherPhone,
+				level: student.level,
+				teacherId: student.teacherId,
 				updatedAt: now,
 			})
 			.where(eq(studentsTable.id, student.id));
@@ -126,21 +121,10 @@ export class StudentRepo {
 	async search(query: string): Promise<FuseResult<Student>[]> {
 		const students = await this.findAll();
 		const fuse = new Fuse(students, {
-			keys: ['firstName', 'lastName', 'group'],
+			keys: ['firstName', 'lastName'],
 			threshold: 0.3,
 		});
 		return fuse.search(query);
-	}
-
-	async findAllGroups(): Promise<string[]> {
-		const rows = await db.select({ group: studentsTable.group }).from(studentsTable);
-		const groups = new Set<string>();
-		for (const row of rows) {
-			if (row.group) {
-				groups.add(row.group);
-			}
-		}
-		return Array.from(groups).sort();
 	}
 }
 
@@ -159,11 +143,10 @@ export class StudentService {
 	async register(params: {
 		firstName: string;
 		lastName: string;
-		birthYear: number;
-		group?: string | null;
+		birthYear?: number | null;
 		phone?: string | null;
-		fatherPhone?: string | null;
-		motherPhone?: string | null;
+		level?: number | null;
+		teacherId: number;
 	}): Promise<Student> {
 		return this.repo.create(params);
 	}
@@ -178,10 +161,6 @@ export class StudentService {
 
 	async search(query: string): Promise<FuseResult<Student>[]> {
 		return this.repo.search(query);
-	}
-
-	async getAllGroups(): Promise<string[]> {
-		return this.repo.findAllGroups();
 	}
 }
 

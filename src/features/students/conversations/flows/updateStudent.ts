@@ -3,6 +3,7 @@ import type { Conversation } from "@grammyjs/conversations";
 import type { BaseContext, MyContext } from "../../../../types.js";
 import { t } from "../../../../utils/i18n.js";
 import { Student } from "../model.js";
+import { teacherService } from "../../../../bot/services.js";
 import {
   buildStudentKeyboard,
   deleteMenuMessage,
@@ -61,14 +62,18 @@ export async function updateStudentConversation(
 
   const updates: Partial<Student> = {};
 
+  // Get teacher name for display
+  const teacher = await teacherService.getById(student.teacherId);
+  const teacherName = teacher ? ((teacher as any).name || `${(teacher as any).firstName || ''} ${(teacher as any).lastName || ''}`.trim() || `Teacher ${teacher.id}`) : `ID: ${student.teacherId}`;
+
   while (true) {
     const currentInfo = `
 ${t("current_student_info", lang)}
 ${t("student_info_name", lang)}: ${student.firstName} ${student.lastName}
-${t("student_info_group", lang)}: ${student.group || t("no_value", lang)}
+${t("student_info_birth_year", lang)}: ${student.birthYear || t("no_value", lang)}
+${t("student_info_level", lang) || "Level"}: ${student.level || t("no_value", lang)}
 ${t("student_info_phone", lang)}: ${student.phone || t("no_value", lang)}
-${t("student_info_father_phone", lang)}: ${student.fatherPhone || t("no_value", lang)}
-${t("student_info_mother_phone", lang)}: ${student.motherPhone || t("no_value", lang)}
+${t("student_info_teacher", lang) || "Teacher"}: ${teacherName}
 
 ${t("select_field_to_update", lang)}
     `.trim();
@@ -78,13 +83,13 @@ ${t("select_field_to_update", lang)}
       .row()
       .text(t("field_last_name", lang), "field_lastName")
       .row()
-      .text(t("field_group", lang), "field_group")
+      .text(t("field_birth_year", lang) || "Birth Year", "field_birthYear")
+      .row()
+      .text(t("field_level", lang) || "Level", "field_level")
       .row()
       .text(t("field_phone", lang), "field_phone")
       .row()
-      .text(t("field_father_phone", lang), "field_fatherPhone")
-      .row()
-      .text(t("field_mother_phone", lang), "field_motherPhone")
+      .text(t("field_teacher", lang) || "Teacher", "field_teacher")
       .row()
       .text(t("field_finish_save", lang), "field_finish")
       .row()
@@ -149,43 +154,70 @@ async function handleFieldAction(
     return { ...student, lastName: newValue };
   }
 
-  if (action === "field_group") {
-    const groups = await studentService.getAllGroups();
-    const groupKeyboard = new InlineKeyboard();
+  if (action === "field_birthYear") {
+    await ctx.reply(t("enter_birth_year", lang) || "Enter birth year (YYYY) or send '-' to clear:");
+    response = await conversation.wait();
+    const text = response.message?.text?.trim();
+    if (text === "-") {
+      updates.birthYear = null;
+      return { ...student, birthYear: null };
+    } else if (text && /^\d{4}$/.test(text)) {
+      const year = parseInt(text);
+      updates.birthYear = year;
+      return { ...student, birthYear: year };
+    } else {
+      await ctx.reply(t("invalid_year_format", lang) || "Invalid year format. Please enter YYYY or '-' to clear:");
+      return student;
+    }
+  }
 
-    if (groups.length > 0) {
-      for (const group of groups.slice(0, 10)) {
-        const callbackData = `group_${group}`;
-        if (callbackData.length <= 64) {
-          groupKeyboard.text(group, callbackData).row();
+  if (action === "field_level") {
+    await ctx.reply("Enter level (1-4) or send '-' to clear:");
+    response = await conversation.wait();
+    const text = response.message?.text?.trim();
+    if (text === "-") {
+      updates.level = null;
+      return { ...student, level: null };
+    } else if (text && /^[1-4]$/.test(text)) {
+      const level = parseInt(text);
+      updates.level = level;
+      return { ...student, level };
+    } else {
+      await ctx.reply("Invalid level. Please enter 1, 2, 3, or 4, or '-' to clear:");
+      return student;
+    }
+  }
+
+  if (action === "field_teacher") {
+    const teachers = await teacherService.getAll();
+    if (teachers.length === 0) {
+      await ctx.reply("No teachers available.");
+      return student;
+    }
+
+    const teacherKeyboard = new InlineKeyboard();
+    for (const teacher of teachers.slice(0, 10)) {
+      const teacherDisplayName = (teacher as any).name || `${(teacher as any).firstName || ''} ${(teacher as any).lastName || ''}`.trim() || `Teacher ${teacher.id}`;
+      teacherKeyboard.text(teacherDisplayName, `teacher_${teacher.id}`).row();
+    }
+    teacherKeyboard.text(t("cancel", lang), "teacher_cancel");
+
+    await ctx.reply(t("select_teacher", lang) || "Select a teacher:", { reply_markup: teacherKeyboard });
+    const teacherCtx = await conversation.wait();
+    const teacherAction = teacherCtx.callbackQuery?.data;
+
+    await teacherCtx.answerCallbackQuery();
+    await deleteMenuMessage(ctx, teacherCtx);
+
+    if (teacherAction && teacherAction.startsWith("teacher_")) {
+      if (teacherAction === "teacher_cancel") {
+        return student;
+      } else {
+        const selectedTeacherId = parseInt(teacherAction.substring(8));
+        if (!isNaN(selectedTeacherId)) {
+          updates.teacherId = selectedTeacherId;
+          return { ...student, teacherId: selectedTeacherId };
         }
-      }
-    }
-
-    if (student.group) {
-      groupKeyboard.text("Remove Group", "group_remove").row();
-    }
-    groupKeyboard.text(t("cancel", lang), "group_cancel");
-
-    const groupMessage = groups.length === 0
-      ? `No groups available. Current group: ${student.group || "None"}`
-      : `Select a group (current: ${student.group || "None"}):`;
-
-    await ctx.reply(groupMessage, { reply_markup: groupKeyboard });
-    const groupCtx = await conversation.wait();
-    const groupAction = groupCtx.callbackQuery?.data;
-
-    await groupCtx.answerCallbackQuery();
-    await deleteMenuMessage(ctx, groupCtx);
-
-    if (groupAction && groupAction.startsWith("group_")) {
-      if (groupAction === "group_remove") {
-        updates.group = null;
-        return { ...student, group: null };
-      } else if (groupAction !== "group_cancel") {
-        const selectedGroup = groupAction.substring(6);
-        updates.group = selectedGroup;
-        return { ...student, group: selectedGroup };
       }
     }
     return student;
@@ -198,24 +230,6 @@ async function handleFieldAction(
     }
     updates.phone = newValue;
     return { ...student, phone: newValue };
-  }
-
-  if (action === "field_fatherPhone" && newValue) {
-    if (newValue === "-") {
-      updates.fatherPhone = null;
-      return { ...student, fatherPhone: null };
-    }
-    updates.fatherPhone = newValue;
-    return { ...student, fatherPhone: newValue };
-  }
-
-  if (action === "field_motherPhone" && newValue) {
-    if (newValue === "-") {
-      updates.motherPhone = null;
-      return { ...student, motherPhone: null };
-    }
-    updates.motherPhone = newValue;
-    return { ...student, motherPhone: newValue };
   }
 
   return null;

@@ -1,7 +1,7 @@
 import { InlineKeyboard } from "grammy";
 import type { MyContext } from "../../../types.js";
-import { StudentService } from "../model.js";
 import { t } from "../../../utils/i18n.js";
+import { StudentService } from "../model.js";
 
 export const studentService = new StudentService();
 
@@ -24,14 +24,14 @@ export async function deleteMenuMessage(ctx: MyContext, callbackCtx?: MyContext)
 }
 
 export function buildStudentKeyboard(
-  students: { id: number; firstName: string; lastName: string; group: string | null }[],
+  students: { id: number; firstName: string; lastName: string; level: number | null }[],
   lang: string
 ): InlineKeyboard {
   const keyboard = new InlineKeyboard();
   for (const student of students.slice(0, 10)) {
     keyboard
       .text(
-        `${student.firstName} ${student.lastName}${student.group ? ` (${student.group})` : ""}`,
+        `${student.firstName} ${student.lastName}${student.level ? ` (Level ${student.level})` : ""}`,
         `student_${student.id}`
       )
       .row();

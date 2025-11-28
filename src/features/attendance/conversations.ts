@@ -25,7 +25,7 @@ export async function attendanceConversation(conversation: Conversation<BaseCont
 	// Show menu with options
 	const keyboard = new InlineKeyboard()
 		.text(t('mark_attendance', lang) || 'Mark Attendance', 'mark_attendance').row()
-		.text(t('browse_by_event', lang) || 'Browse by Event', 'browse_by_event').row()
+		.text(t('browse_by_date', lang) || 'Browse by Date', 'browse_by_event').row()
 		.text(t('browse_by_student', lang) || 'Browse by Student', 'browse_by_student').row()
 		.text(t('cancel', lang), 'cancel');
 	
@@ -68,23 +68,29 @@ export async function attendanceConversation(conversation: Conversation<BaseCont
 async function markAttendanceConversation(conversation: Conversation<BaseContext, MyContext>, ctx: MyContext) {
 	const lang = getLang(ctx);
 	
-	// Ask for event name
-	await ctx.reply(`${t('enter_event_name', lang)} /today`);
+	// Ask for date
+	await ctx.reply(`${t('enter_date', lang) || 'Enter date (YYYY-MM-DD) or /today'}`);
 	let response = await conversation.wait();
-	let event = response.message?.text?.trim();
+	let dateInput = response.message?.text?.trim();
 	
-	if (!event) {
+	if (!dateInput) {
 		await ctx.reply(t('operation_cancelled', lang));
 		return;
 	}
 	
-	// If user replied with /today, set event to current date in YYYY-MM-DD format
-	if (event === '/today') {
+	// If user replied with /today, set date to current date in YYYY-MM-DD format
+	let date: string;
+	if (dateInput === '/today') {
 		const now = new Date();
 		const year = now.getFullYear();
 		const month = String(now.getMonth() + 1).padStart(2, '0');
 		const day = String(now.getDate()).padStart(2, '0');
-		event = `${year}-${month}-${day}`;
+		date = `${year}-${month}-${day}`;
+	} else if (/^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+		date = dateInput;
+	} else {
+		await ctx.reply(t('invalid_date_format', lang) || 'Invalid date format. Please use YYYY-MM-DD or /today');
+		return;
 	}
 	
 	// Search for student
@@ -109,7 +115,7 @@ async function markAttendanceConversation(conversation: Conversation<BaseContext
 	for (const result of results.slice(0, 10)) {
 		const student = result.item;
 		keyboard.text(
-			`${student.firstName} ${student.lastName}${student.group ? ` (${student.group})` : ''}`,
+			`${student.firstName} ${student.lastName}${student.level ? ` (Level ${student.level})` : ''}`,
 			`student_${student.id}`
 		).row();
 	}
@@ -148,90 +154,114 @@ async function markAttendanceConversation(conversation: Conversation<BaseContext
 		return;
 	}
 	
-	// Check if already attended
-	const hasAttended = await attendanceService.hasAttendedToday(studentId, event);
-	
-	if (hasAttended) {
-		await ctx.reply(t('already_marked', lang));
+	// Check if already has attendance record for this date
+	const hasRecord = await attendanceService.hasRecordOnDate(studentId, date);
+	if (hasRecord) {
+		await ctx.reply(t('already_marked', lang) || `Attendance already marked for ${date}`);
 		return;
 	}
 	
 	// Mark present
 	await ctx.reply(t('processing', lang));
 	try {
-		await attendanceService.markPresent(studentId, event);
+		await attendanceService.markPresent(studentId, date);
 		await ctx.reply(
-			`${t('marked_present', lang)}: ${student.firstName} ${student.lastName} - ${event}`
+			`${t('marked_present', lang) || 'Marked present'}: ${student.firstName} ${student.lastName} - ${date}`
 		);
 	} catch (err) {
 		await ctx.reply(t('operation_failed', lang));
 	}
 }
 
-// Browse attendance by event
+// Browse attendance by date
 async function browseByEventConversation(conversation: Conversation<BaseContext, MyContext>, ctx: MyContext) {
 	const lang = getLang(ctx);
 	
-	// Ask for event name
-	await ctx.reply(t('enter_event_name', lang));
+	// Ask for date
+	await ctx.reply(t('enter_date', lang) || 'Enter date (YYYY-MM-DD) or /today');
 	let response = await conversation.wait();
-	const event = response.message?.text?.trim();
+	let dateInput = response.message?.text?.trim();
 	
-	if (!event) {
+	if (!dateInput) {
 		await ctx.reply(t('operation_cancelled', lang));
 		return;
 	}
 	
-	// Get attendance records for the event
+	// Parse date input
+	let date: string;
+	if (dateInput === '/today') {
+		const now = new Date();
+		const year = now.getFullYear();
+		const month = String(now.getMonth() + 1).padStart(2, '0');
+		const day = String(now.getDate()).padStart(2, '0');
+		date = `${year}-${month}-${day}`;
+	} else if (/^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+		date = dateInput;
+	} else {
+		await ctx.reply(t('invalid_date_format', lang) || 'Invalid date format. Please use YYYY-MM-DD or /today');
+		return;
+	}
+	
+	// Get attendance records for the date
 	await ctx.reply(t('processing', lang));
 	try {
-		const { records } = await attendanceService.getEventAttendance(event, { limit: 100 });
+		const { records } = await attendanceService.getDateAttendance(date, { limit: 100 });
 		
 		if (records.length === 0) {
 			await ctx.reply(t('no_results', lang));
 			return;
 		}
 		
-		// Group by date and get student info
-		const attendanceByDate: Record<string, Array<{ studentId: number; createdAt: Date }>> = {};
+		// Separate present and absent
+		const present: Array<{ studentId: number; createdAt: Date }> = [];
+		const absent: Array<{ studentId: number; createdAt: Date }> = [];
+		
 		for (const record of records) {
-			const dateKey = record.createdAt.toISOString().split('T')[0];
-			if (!attendanceByDate[dateKey]) {
-				attendanceByDate[dateKey] = [];
+			if (record.status === 'present') {
+				present.push({ studentId: record.studentId, createdAt: record.createdAt });
+			} else {
+				absent.push({ studentId: record.studentId, createdAt: record.createdAt });
 			}
-			attendanceByDate[dateKey].push({ studentId: record.studentId, createdAt: record.createdAt });
 		}
 		
 		// Build message
-		let message = `**${t('attendance_for', lang).replace('{event}', event)}**\n\n`;
+		let message = `**${t('attendance_for', lang) || 'Attendance for'} ${date}**\n\n`;
 		
-		for (const [date, attendances] of Object.entries(attendanceByDate).sort().reverse()) {
-			const studentLabel =
-				attendances.length === 1
-					? t('student_label_single', lang)
-					: t('student_label_plural', lang);
-			message += `**${date}** (${attendances.length} ${studentLabel})\n`;
-			
-			// Get student names
-			for (const att of attendances.slice(0, 20)) {
+		if (present.length > 0) {
+			message += `**${t('present', lang) || 'Present'}** (${present.length})\n`;
+			for (const att of present.slice(0, 20)) {
 				const student = await studentService.getById(att.studentId);
 				if (student) {
-				const timeLocale = lang === 'ar' ? 'ar-SA' : 'en-US';
-				const time = new Date(att.createdAt).toLocaleTimeString(timeLocale, {
-					hour: '2-digit',
-					minute: '2-digit',
-				});
-					message += `• ${student.firstName} ${student.lastName}${student.group ? ` (${student.group})` : ''} - ${time}\n`;
+					const timeLocale = lang === 'ar' ? 'ar-SA' : 'en-US';
+					const time = new Date(att.createdAt).toLocaleTimeString(timeLocale, {
+						hour: '2-digit',
+						minute: '2-digit',
+					});
+					message += `• ${student.firstName} ${student.lastName}${student.level ? ` (Level ${student.level})` : ''} - ${time}\n`;
 				}
 			}
-			
-			if (attendances.length > 20) {
-				message += `${t('attendance_more_records', lang).replace(
-					'{count}',
-					`${attendances.length - 20}`
-				)}\n`;
+			if (present.length > 20) {
+				message += `... and ${present.length - 20} more\n`;
 			}
-			
+			message += '\n';
+		}
+		
+		if (absent.length > 0) {
+			message += `**${t('absent', lang) || 'Absent'}** (${absent.length})\n`;
+			for (const att of absent.slice(0, 20)) {
+				const student = await studentService.getById(att.studentId);
+				if (student) {
+					const timeLocale = lang === 'ar' ? 'ar-SA' : 'en-US';
+					const time = new Date(att.createdAt).toLocaleTimeString(timeLocale, {
+						hour: '2-digit',
+						minute: '2-digit',
+					});
+					message += `• ${student.firstName} ${student.lastName}${student.level ? ` (Level ${student.level})` : ''} - ${time}\n`;
+				}
+			}
+			if (absent.length > 20) {
+				message += `... and ${absent.length - 20} more\n`;
+			}
 			message += '\n';
 		}
 		
@@ -267,7 +297,7 @@ async function browseByStudentConversation(conversation: Conversation<BaseContex
 	for (const result of results.slice(0, 10)) {
 		const student = result.item;
 		keyboard.text(
-			`${student.firstName} ${student.lastName}${student.group ? ` (${student.group})` : ''}`,
+			`${student.firstName} ${student.lastName}${student.level ? ` (Level ${student.level})` : ''}`,
 			`student_${student.id}`
 		).row();
 	}
@@ -316,32 +346,44 @@ async function browseByStudentConversation(conversation: Conversation<BaseContex
 			return;
 		}
 		
-		// Group by event
-		const attendanceByEvent: Record<string, Date[]> = {};
+		// Group by date and status
+		const attendanceByDate: Record<string, { present: Date[]; absent: Date[] }> = {};
 		for (const record of records) {
-			if (!attendanceByEvent[record.event]) {
-				attendanceByEvent[record.event] = [];
+			if (!attendanceByDate[record.date]) {
+				attendanceByDate[record.date] = { present: [], absent: [] };
 			}
-			attendanceByEvent[record.event].push(record.createdAt);
+			if (record.status === 'present') {
+				attendanceByDate[record.date].present.push(record.createdAt);
+			} else {
+				attendanceByDate[record.date].absent.push(record.createdAt);
+			}
 		}
 		
 		// Build message
-		let message = `**Attendance for ${student.firstName} ${student.lastName}**\n\n`;
+		let message = `**${t('attendance_for', lang) || 'Attendance for'} ${student.firstName} ${student.lastName}**\n\n`;
 		
-		for (const [event, dates] of Object.entries(attendanceByEvent).sort()) {
-			message += `**${event}**: ${dates.length} ${dates.length === 1 ? 'time' : 'times'}\n`;
+		// Sort dates descending
+		const sortedDates = Object.keys(attendanceByDate).sort().reverse();
+		
+		for (const date of sortedDates.slice(0, 30)) {
+			const { present, absent } = attendanceByDate[date];
+			const total = present.length + absent.length;
 			
-			// Show recent dates
-			const recentDates = dates
-				.sort((a, b) => b.getTime() - a.getTime())
-				.slice(0, 10)
-				.map(d => d.toISOString().split('T')[0]);
-			
-			message += `Recent: ${recentDates.join(', ')}\n`;
-			if (dates.length > 10) {
-				message += `... and ${dates.length - 10} more\n`;
+			message += `**${date}**: `;
+			if (present.length > 0) {
+				message += `${t('present', lang) || 'Present'}: ${present.length}`;
+			}
+			if (present.length > 0 && absent.length > 0) {
+				message += ', ';
+			}
+			if (absent.length > 0) {
+				message += `${t('absent', lang) || 'Absent'}: ${absent.length}`;
 			}
 			message += '\n';
+		}
+		
+		if (sortedDates.length > 30) {
+			message += `... and ${sortedDates.length - 30} more dates\n`;
 		}
 		
 		await ctx.reply(message, { parse_mode: 'Markdown' });

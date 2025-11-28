@@ -7,20 +7,24 @@ import { attendance as attendanceTable } from '../../db/schema.js';
 export interface Attendance {
 	id: number;
 	studentId: number;
-	event: string;
+	date: string; // Format: YYYY-MM-DD
+	status: 'present' | 'absent';
+	teacherId: number | null;
 	createdAt: Date;
 	updatedAt: Date;
 }
 
 // Convert database row to domain model
 function toDomain(row: typeof attendanceTable.$inferSelect): Attendance {
-	if (!row.id || !row.studentId || !row.event || !row.createdAt || !row.updatedAt) {
+	if (!row.id || !row.studentId || !row.date || !row.status || !row.createdAt || !row.updatedAt) {
 		throw new Error('Invalid attendance row: missing required fields');
 	}
 	return {
 		id: row.id,
 		studentId: row.studentId,
-		event: row.event,
+		date: String(row.date),
+		status: row.status as 'present' | 'absent',
+		teacherId: row.teacherId ?? null,
 		createdAt: new Date(row.createdAt),
 		updatedAt: new Date(row.updatedAt),
 	};
@@ -87,18 +91,22 @@ export class AttendanceRepo {
 
 	async create(data: {
 		studentId: number;
-		event: string;
+		date: string; // YYYY-MM-DD format
+		status: 'present' | 'absent';
+		teacherId?: number | null;
 	}): Promise<Attendance | null> {
-		const today = new Date();
-		const hasAttended = await this.hasAttended(data.studentId, data.event, today);
-		if (hasAttended) {
-			return null; // Already attended today
+		// Check if attendance already exists for this student and date
+		const existing = await this.findByStudentAndDate(data.studentId, data.date);
+		if (existing) {
+			return null; // Already has attendance record for this date
 		}
 
 		const now = new Date();
 		await db.insert(attendanceTable).values({
 			studentId: data.studentId,
-			event: data.event,
+			date: data.date,
+			status: data.status,
+			teacherId: data.teacherId ?? null,
 			createdAt: now,
 			updatedAt: now,
 		});
@@ -108,41 +116,43 @@ export class AttendanceRepo {
 		return toDomain(created);
 	}
 
-	async hasAttended(studentId: number, eventName: string, date: Date): Promise<boolean> {
-		const rows = await db.select().from(attendanceTable).where(eq(attendanceTable.studentId, studentId));
-		return rows.some(
-			(r) => r.createdAt != null && r.event === eventName && this.isSameDay(new Date(r.createdAt), date)
-		);
+	async findByStudentAndDate(studentId: number, date: string): Promise<Attendance | null> {
+		const rows = await db
+			.select()
+			.from(attendanceTable)
+			.where(and(eq(attendanceTable.studentId, studentId), eq(attendanceTable.date, date)));
+		if (rows.length === 0) return null;
+		return toDomain(rows[0]!);
 	}
 
-	async deleteToday(studentId: number, eventName: string): Promise<boolean> {
-		const today = new Date();
-		const rows = await db.select().from(attendanceTable).where(eq(attendanceTable.studentId, studentId));
-		const target = rows.find(
-			(r) => r.id != null && r.createdAt != null && r.event === eventName && this.isSameDay(new Date(r.createdAt), today)
-		);
-		if (!target || !target.id) {
+	async hasAttended(studentId: number, date: string): Promise<boolean> {
+		const attendance = await this.findByStudentAndDate(studentId, date);
+		return attendance !== null && attendance.status === 'present';
+	}
+
+	async deleteByStudentAndDate(studentId: number, date: string): Promise<boolean> {
+		const rows = await db
+			.select()
+			.from(attendanceTable)
+			.where(and(eq(attendanceTable.studentId, studentId), eq(attendanceTable.date, date)));
+		if (rows.length === 0) {
 			return false;
 		}
-		await db.delete(attendanceTable).where(eq(attendanceTable.id, target.id));
+		await db.delete(attendanceTable).where(and(eq(attendanceTable.studentId, studentId), eq(attendanceTable.date, date)));
 		return true;
 	}
 
-	async findByEvent(
-		event: string,
+	async findByDate(
+		date: string, // YYYY-MM-DD format
 		options?: {
-			fromDate?: Date;
-			toDate?: Date;
+			status?: 'present' | 'absent';
 			limit?: number;
 			offset?: number;
 		}
 	): Promise<{ records: Attendance[]; total: number }> {
-		const conditions = [eq(attendanceTable.event, event)];
-		if (options?.fromDate) {
-			conditions.push(gte(attendanceTable.createdAt, options.fromDate));
-		}
-		if (options?.toDate) {
-			conditions.push(lte(attendanceTable.createdAt, options.toDate));
+		const conditions = [eq(attendanceTable.date, date)];
+		if (options?.status) {
+			conditions.push(eq(attendanceTable.status, options.status));
 		}
 
 		const whereClause = conditions.length > 1 ? and(...conditions) : conditions[0];
@@ -177,16 +187,42 @@ export class AttendanceRepo {
 export class AttendanceService {
 	constructor(private repo: AttendanceRepo = new AttendanceRepo()) {}
 
-	async markPresent(studentId: number, event: string): Promise<Attendance | null> {
-		return this.repo.create({ studentId, event });
+	formatDate(date: Date): string {
+		const year = date.getFullYear();
+		const month = String(date.getMonth() + 1).padStart(2, '0');
+		const day = String(date.getDate()).padStart(2, '0');
+		return `${year}-${month}-${day}`;
 	}
 
-	async hasAttendedToday(studentId: number, event: string): Promise<boolean> {
-		return this.repo.hasAttended(studentId, event, new Date());
+	async markPresent(studentId: number, date: string, teacherId?: number | null): Promise<Attendance | null> {
+		return this.repo.create({ studentId, date, status: 'present', teacherId });
 	}
 
-	async undoToday(studentId: number, event: string): Promise<boolean> {
-		return this.repo.deleteToday(studentId, event);
+	async markAbsent(studentId: number, date: string, teacherId?: number | null): Promise<Attendance | null> {
+		return this.repo.create({ studentId, date, status: 'absent', teacherId });
+	}
+
+	async hasAttendedOnDate(studentId: number, date: string): Promise<boolean> {
+		return this.repo.hasAttended(studentId, date);
+	}
+
+	async hasRecordOnDate(studentId: number, date: string): Promise<boolean> {
+		const record = await this.repo.findByStudentAndDate(studentId, date);
+		return record !== null;
+	}
+
+	async hasAttendedToday(studentId: number): Promise<boolean> {
+		const today = this.formatDate(new Date());
+		return this.repo.hasAttended(studentId, today);
+	}
+
+	async undoByDate(studentId: number, date: string): Promise<boolean> {
+		return this.repo.deleteByStudentAndDate(studentId, date);
+	}
+
+	async undoToday(studentId: number): Promise<boolean> {
+		const today = this.formatDate(new Date());
+		return this.repo.deleteByStudentAndDate(studentId, today);
 	}
 
 	async getStudentAttendance(
@@ -201,16 +237,15 @@ export class AttendanceService {
 		return this.repo.findByStudentId(studentId, options);
 	}
 
-	async getEventAttendance(
-		event: string,
+	async getDateAttendance(
+		date: string,
 		options?: {
-			fromDate?: Date;
-			toDate?: Date;
+			status?: 'present' | 'absent';
 			limit?: number;
 			offset?: number;
 		}
 	): Promise<{ records: Attendance[]; total: number }> {
-		return this.repo.findByEvent(event, options);
+		return this.repo.findByDate(date, options);
 	}
 }
 
