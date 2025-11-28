@@ -65,10 +65,30 @@ export async function browseByEventConversation(conversation: Conversation<BaseC
 		);
 
 		// Create items with student info
-		const items = records.map((record) => ({
+		let items = records.map((record) => ({
 			record,
 			student: studentMap.get(record.studentId),
 		}));
+
+		// Sort: present first, then absent. Within each group, sort by student name alphabetically
+		// If a student is missing, place them after those with names.
+		items = items.sort((a, b) => {
+			const statusA = a.record.status === 'present' ? 0 : 1;
+			const statusB = b.record.status === 'present' ? 0 : 1;
+			if (statusA !== statusB) return statusA - statusB;
+
+			const hasNameA = !!a.student;
+			const hasNameB = !!b.student;
+			if (hasNameA && hasNameB) {
+				const nameA = `${a.student!.lastName ?? ''} ${a.student!.firstName ?? ''}`.trim();
+				const nameB = `${b.student!.lastName ?? ''} ${b.student!.firstName ?? ''}`.trim();
+				const cmp = nameA.localeCompare(nameB);
+				if (cmp !== 0) return cmp;
+			} else if (hasNameA !== hasNameB) {
+				return hasNameA ? -1 : 1;
+			}
+			return 0;
+		});
 
 		// Count present and absent
 		const presentCount = records.filter(r => r.status === 'present').length;
