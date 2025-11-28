@@ -1,7 +1,7 @@
 import type { Conversation } from "@grammyjs/conversations";
 import { InlineKeyboard } from "grammy";
 import type { BaseContext, MyContext } from "../../../types.js";
-import { getCurrentUser } from "../../../utils/auth.js";
+import { getCurrentUser } from "../../../features/auth/model.js";
 import { t } from "../../../utils/i18n.js";
 import { createStudentConversation } from "./flows/createStudent.js";
 import { deleteStudentConversation } from "./flows/deleteStudent.js";

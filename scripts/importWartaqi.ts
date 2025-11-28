@@ -1,7 +1,7 @@
 import { Database } from 'bun:sqlite';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { readFileSync } from 'fs';
-import * as schema from './db/schema.js';
+import * as schema from '../src/db/schema.js';
 
 // Initialize database connection
 const sqlite = new Database('wartaqi.db');

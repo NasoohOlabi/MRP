@@ -1,13 +1,12 @@
-// Setup script to initialize Wartaqi database schema using Drizzle Kit
 import { $ } from 'bun';
 import { existsSync } from 'fs';
 import { resolve } from 'path';
 
 const DRIZZLE_CONFIG = 'drizzle.wartaqi.config.json';
 
-async function setupDatabase() {
+export async function initializeWartaqiSchema() {
 	try {
-		console.log('🔧 Syncing Wartaqi database schema with Drizzle definitions...\n');
+		console.log('🔧 Syncing Wartaqi database schema with Drizzle definitions...');
 
 		const configPath = resolve(process.cwd(), DRIZZLE_CONFIG);
 
@@ -17,11 +16,9 @@ async function setupDatabase() {
 
 		await $`bunx drizzle-kit push --config ${configPath}`;
 
-		console.log('\n✅ Database schema synced successfully!');
+		console.log('✅ Database schema synced successfully!');
 	} catch (error) {
 		console.error('❌ Error syncing database schema with Drizzle:', error);
 		process.exit(1);
 	}
 }
-
-setupDatabase();

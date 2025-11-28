@@ -1,95 +1,96 @@
-// Database schema definitions using Drizzle ORM
+// Database schema definitions for Wartaqi bot using Drizzle ORM
 import { relations, sql } from 'drizzle-orm';
-import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
-// Represents the 'students' table
-export const students = sqliteTable('students', {
+// Teachers table - derived from 'حلقة' column
+export const teachers = sqliteTable('teachers', {
 	id: integer('id').primaryKey(),
-	firstName: text('first_name', { length: 255 }).notNull(),
-	lastName: text('last_name', { length: 255 }).notNull(),
-	birthYear: integer('birth_year').notNull(),
-	phone: text('phone', { length: 20 }),
-	fatherPhone: text('father_phone', { length: 20 }),
-	motherPhone: text('mother_phone', { length: 20 }),
-	group: text('group', { length: 100 }),
+	name: text('name', { length: 255 }).notNull().unique(),
 	createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(strftime('%s', 'now'))`),
 	updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(strftime('%s', 'now'))`),
 });
 
-// Represents the 'teacher' table
-export const teachers = sqliteTable('teacher', {
-	id: integer('id').primaryKey(),
-	firstName: text('first_name', { length: 255 }).notNull(),
-	lastName: text('last_name', { length: 255 }).notNull(),
-	phoneNumber: text('phone_number', { length: 20 }).notNull().unique(),
-	group: text('group', { length: 100 }).notNull(),
-	createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(strftime('%s', 'now'))`),
-	updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(strftime('%s', 'now'))`),
-});
+// Students table
+export const students = sqliteTable(
+	'students',
+	{
+		id: integer('id').primaryKey(),
+		firstName: text('first_name', { length: 255 }).notNull(),
+		lastName: text('last_name', { length: 255 }).notNull(),
+		birthYear: integer('birth_year'),
+		phone: text('phone', { length: 20 }),
+		level: integer('level'), // 1-4
+		teacherId: integer('teacher_id').notNull().references(() => teachers.id, { onDelete: 'cascade' }),
+		createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(strftime('%s', 'now'))`),
+		updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(strftime('%s', 'now'))`),
+	},
+	(table) => ({
+		teacherIdx: index('idx_students_teacher_id').on(table.teacherId),
+	}),
+);
 
-export const attendance = sqliteTable('attendance', {
-	id: integer('id').primaryKey(),
-	studentId: integer('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
-	event: text('event', { length: 255 }).notNull(),
-	createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(strftime('%s', 'now'))`),
-	updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(strftime('%s', 'now'))`),
-});
+// Notebook deliveries table - tracks which students received notebooks for which level
+export const notebookDeliveries = sqliteTable(
+	'notebook_deliveries',
+	{
+		id: integer('id').primaryKey(),
+		studentId: integer('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
+		level: integer('level').notNull(), // The level for which the notebook was delivered
+		deliveredAt: integer('delivered_at', { mode: 'timestamp' }).notNull().default(sql`(strftime('%s', 'now'))`),
+		createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(strftime('%s', 'now'))`),
+		updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(strftime('%s', 'now'))`),
+	},
+	(table) => ({
+		studentIdx: index('idx_notebook_deliveries_student_id').on(table.studentId),
+	}),
+);
 
-export const memorization = sqliteTable('memorization', {
-	id: integer('id').primaryKey(),
-	studentId: integer('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
-	page: integer('page').notNull(),
-	createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(strftime('%s', 'now'))`),
-	updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(strftime('%s', 'now'))`),
-});
+// Attendance table
+export const attendance = sqliteTable(
+	'attendance',
+	{
+		id: integer('id').primaryKey(),
+		studentId: integer('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
+		date: text('date', { length: 10 }).notNull(), // Format: YYYY-MM-DD
+		status: text('status', { length: 20 }).notNull().default('present'), // 'present', 'absent'
+		teacherId: integer('teacher_id').references(() => teachers.id, { onDelete: 'set null' }),
+		createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(strftime('%s', 'now'))`),
+		updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(strftime('%s', 'now'))`),
+	},
+	(table) => ({
+		studentIdx: index('idx_attendance_student_id').on(table.studentId),
+		dateIdx: index('idx_attendance_date').on(table.date),
+	}),
+);
 
-// User accounts table for authentication and authorization
-export const users = sqliteTable('users', {
-	id: integer('id').primaryKey(),
-	telegramUserId: integer('telegram_user_id').notNull().unique(),
-	firstName: text('first_name', { length: 255 }).notNull(),
-	lastName: text('last_name', { length: 255 }),
-	role: text('role', { length: 20 }).notNull().default('student'), // 'admin', 'teacher', 'student'
-	phone: text('phone', { length: 20 }),
-	linkedStudentId: integer('linked_student_id').references(() => students.id, { onDelete: 'set null' }),
-	linkedTeacherId: integer('linked_teacher_id').references(() => teachers.id, { onDelete: 'set null' }),
-	isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
-	createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(strftime('%s', 'now'))`),
-	updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(strftime('%s', 'now'))`),
-});
+// Define relations
+export const teachersRelations = relations(teachers, ({ many }) => ({
+	students: many(students),
+}));
 
-// Define relations between tables
+export const studentsRelations = relations(students, ({ one, many }) => ({
+	teacher: one(teachers, {
+		fields: [students.teacherId],
+		references: [teachers.id],
+	}),
+	notebookDeliveries: many(notebookDeliveries),
+	attendanceRecords: many(attendance),
+}));
+
+export const notebookDeliveriesRelations = relations(notebookDeliveries, ({ one }) => ({
+	student: one(students, {
+		fields: [notebookDeliveries.studentId],
+		references: [students.id],
+	}),
+}));
+
 export const attendanceRelations = relations(attendance, ({ one }) => ({
 	student: one(students, {
 		fields: [attendance.studentId],
 		references: [students.id],
 	}),
-}));
-
-export const memorizationRelations = relations(memorization, ({ one }) => ({
-	student: one(students, {
-		fields: [memorization.studentId],
-		references: [students.id],
-	}),
-}));
-
-export const studentsRelations = relations(students, ({ many }) => ({
-	attendanceRecords: many(attendance),
-	memorizationRecords: many(memorization),
-	linkedUsers: many(users),
-}));
-
-export const teachersRelations = relations(teachers, ({ many: _many }) => ({
-	linkedUsers: _many(users),
-}));
-
-export const usersRelations = relations(users, ({ one: _one }) => ({
-	linkedStudent: _one(students, {
-		fields: [users.linkedStudentId],
-		references: [students.id],
-	}),
-	linkedTeacher: _one(teachers, {
-		fields: [users.linkedTeacherId],
+	teacher: one(teachers, {
+		fields: [attendance.teacherId],
 		references: [teachers.id],
 	}),
 }));

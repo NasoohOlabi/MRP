@@ -1,7 +1,7 @@
 // Authentication and authorization utilities
-import type { MyContext } from '../types.js';
-import { UserService, type UserRole } from '../features/users/model.js';
-import { t } from './i18n.js';
+import type { MyContext } from '../../types.js';
+import { t } from '../../utils/i18n.js';
+import { UserService, type UserRole } from '../users/model.js';
 
 const userService = new UserService();
 
@@ -21,14 +21,14 @@ export async function getCurrentUser(ctx: MyContext) {
  */
 export async function requireAuth(ctx: MyContext): Promise<boolean> {
 	const user = await getCurrentUser(ctx);
-	
+
 	if (!user) {
 		const lang = ctx.session?.language || 'en';
 		await ctx.reply(t('auth_login_required', lang));
 		return false;
 	}
 
-	if (!user.isActive) {
+	if (!user['isActive']) {
 		const lang = ctx.session?.language || 'en';
 		await ctx.reply(t('auth_account_inactive', lang));
 		return false;
@@ -83,6 +83,6 @@ export async function requireTeacher(ctx: MyContext): Promise<boolean> {
 export async function getUserRole(ctx: MyContext): Promise<UserRole | null> {
 	const user = await getCurrentUser(ctx);
 	if (!user) return null;
-	return user.role as UserRole;
+	return user['role'] as UserRole;
 }
 

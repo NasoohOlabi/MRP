@@ -1,13 +1,11 @@
 import type { Bot } from "grammy";
-import { getRecentParentInquiries, type ParentInquiry } from "../../features/parents/parentInquiryStore.js";
 import type { MyContext } from "../../types.js";
-import { getCurrentUser, requireAdmin, requireTeacher } from "../../utils/auth.js";
+import { getCurrentUser, requireAdmin, requireTeacher } from "../../features/auth/model.js";
 import { t } from "../../utils/i18n.js";
 import { logger } from "../../utils/logger.js";
 import { formatDate, getLang } from "../helpers.js";
 import {
   attendanceService,
-  memorizationService,
   studentService,
   teacherService,
 } from "../services.js";
@@ -40,8 +38,6 @@ export function registerCommands(bot: Bot<MyContext>): void {
       await ctx.reply(t("start_student", lang), { parse_mode: "Markdown" });
     } else if (user.role === "teacher") {
       await ctx.reply(t("start_teacher", lang), { parse_mode: "Markdown" });
-    } else if (user.role === "parent") {
-      await ctx.reply(t("start_parent", lang), { parse_mode: "Markdown" });
     } else {
       await ctx.reply(t("start_unknown", lang));
     }
@@ -95,22 +91,6 @@ export function registerCommands(bot: Bot<MyContext>): void {
     }
   });
 
-  bot.command("parentleads", async (ctx) => {
-    const lang = getLang(ctx);
-    logger.info("Command received: /parentleads", { userId: ctx.from?.id, chatId: ctx.chat?.id });
-    if (!(await requireAdmin(ctx))) {
-      return;
-    }
-    const inquiries = await getRecentParentInquiries(10);
-    if (inquiries.length === 0) {
-      await ctx.reply(t("parent_inquiry_list_empty", lang));
-      return;
-    }
-    const header = t("parent_inquiry_list_title", lang);
-    const lines = inquiries.map((inquiry, index) => formatParentInquiryEntry(inquiry, index, lang)).join("\n\n");
-    await ctx.reply(`${header}\n\n${lines}`);
-  });
-
   bot.command("students", async (ctx) => {
     logger.info("Command received: /students", { userId: ctx.from?.id, chatId: ctx.chat?.id });
     if (await requireTeacher(ctx)) {
@@ -129,13 +109,6 @@ export function registerCommands(bot: Bot<MyContext>): void {
     logger.info("Command received: /attendance", { userId: ctx.from?.id, chatId: ctx.chat?.id });
     if (await requireTeacher(ctx)) {
       await ctx.conversation.enter("attendance");
-    }
-  });
-
-  bot.command("memorize", async (ctx) => {
-    logger.info("Command received: /memorize", { userId: ctx.from?.id, chatId: ctx.chat?.id });
-    if (await requireTeacher(ctx)) {
-      await ctx.conversation.enter("memorization");
     }
   });
 
@@ -166,8 +139,6 @@ export function registerCommands(bot: Bot<MyContext>): void {
       await ctx.reply(t("start_student", lang), { parse_mode: "Markdown" });
     } else if (user.role === "teacher") {
       await ctx.reply(t("start_teacher", lang), { parse_mode: "Markdown" });
-    } else if (user.role === "parent") {
-      await ctx.reply(t("start_parent", lang), { parse_mode: "Markdown" });
     } else {
       await ctx.reply(t("start_unknown", lang));
     }
@@ -214,49 +185,6 @@ export function registerCommands(bot: Bot<MyContext>): void {
       `\n\n${t("student_info_name", lang).replace("{name}", `${student.firstName} ${student.lastName}`)}\n` +
       `${t("student_info_group", lang).replace("{group}", groupText)}\n` +
       `${t("student_info_teacher", lang).replace("{teacher}", teacherName)}`;
-
-    await ctx.reply(message, { parse_mode: "Markdown" });
-  });
-
-  bot.command("mymemorization", async (ctx) => {
-    const lang = getLang(ctx);
-    logger.info("Command received: /mymemorization", { userId: ctx.from?.id, chatId: ctx.chat?.id });
-
-    if (!ctx.from?.id) {
-      await ctx.reply(t("cannot_get_user_info", lang));
-      return;
-    }
-
-    const user = await getCurrentUser(ctx);
-    if (!user || user.role !== "student" || !user.isActive) {
-      await ctx.reply(t("permission_denied", lang));
-      return;
-    }
-
-    if (!user.linkedStudentId) {
-      await ctx.reply(t("not_linked_student", lang));
-      return;
-    }
-
-    const { records, total } = await memorizationService.getStudentMemorizations(user.linkedStudentId, { limit: 20 });
-
-    if (records.length === 0) {
-      await ctx.reply(t("my_memorization_none", lang));
-      return;
-    }
-
-    const recordsText = records
-      .map((r) =>
-        t("my_memorization_page", lang)
-          .replace("{page}", String(r.page))
-          .replace("{date}", formatDate(r.createdAt, lang))
-      )
-      .join("\n");
-
-    const message =
-      `${t("my_memorization_title", lang)}\n\n` +
-      `${t("my_memorization_total", lang).replace("{total}", String(total))}\n\n` +
-      recordsText;
 
     await ctx.reply(message, { parse_mode: "Markdown" });
   });
@@ -358,13 +286,4 @@ async function handleStudentGroupOrTeacher(ctx: MyContext, type: "group" | "teac
   await ctx.reply(message, { parse_mode: "Markdown" });
 }
 
-function formatParentInquiryEntry(inquiry: ParentInquiry, index: number, lang: string): string {
-  const date = inquiry.createdAt ? new Date(inquiry.createdAt) : new Date();
-  const dateText = formatDate(date, lang);
-  const missing = lang === "ar" ? "—" : "—";
-  if (lang === "ar") {
-    return `${index + 1}.\n• ولي الأمر: ${inquiry.parentName}\n• التواصل: ${inquiry.contact || missing}\n• الطفل: ${inquiry.childName}\n• العمر/الصف: ${inquiry.childAgeOrGrade || missing}\n• البرنامج: ${inquiry.programPreference || missing}\n• ملاحظات: ${inquiry.notes || missing}\n• التاريخ: ${dateText}`;
-  }
-  return `${index + 1}.\n• Parent: ${inquiry.parentName}\n• Contact: ${inquiry.contact || missing}\n• Child: ${inquiry.childName}\n• Age/Grade: ${inquiry.childAgeOrGrade || missing}\n• Program: ${inquiry.programPreference || missing}\n• Notes: ${inquiry.notes || missing}\n• Received: ${dateText}`;
-}
 

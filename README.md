@@ -111,7 +111,6 @@ We have an ambitious plan to evolve MRP into a full-fledged educational manageme
 ### Phase 1: Enhanced Management & UI
 - [ ] **Web Dashboard**: Admin panel for easier data management.
 - [ ] **Analytics Dashboard**: Visual charts for attendance and memorization.
-- [ ] **Parent Portal**: Web view for parents to track child's progress.
 - [ ] **Role-Based Access Control (RBAC)**: Fine-grained permissions system.
 - [ ] **Bulk Import/Export**: Enhanced CSV/Excel support for data migration.
 

@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "bun --watch ./src/index.ts",
     "start:wartaqi": "bun src/startWartaqi.ts",
+    "start": "bun ./src/index.ts",
     "wartaqi:setup": "bun src/wartaqi/setup-db.ts",
     "wartaqi:import": "bun src/wartaqi/import.ts",
     "drizzle": "drizzle-kit push",

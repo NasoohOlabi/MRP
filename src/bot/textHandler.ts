@@ -1,7 +1,7 @@
 import type { Bot } from "grammy";
 import type { MyContext } from "../types.js";
 import type { User } from "../features/users/model.js";
-import { getCurrentUser, requireAdmin, requireTeacher } from "../utils/auth.js";
+import { getCurrentUser, requireAdmin, requireTeacher } from "../features/auth/model.js";
 import {
 	buildHelpReply,
 	isHelpQuestion,
@@ -23,7 +23,6 @@ const intentRoutes: Record<
 	"students.menu": { conversation: "students", requiresRole: "teacher" },
 	"teachers.menu": { conversation: "teachers", requiresRole: "teacher" },
 	"attendance.mark": { conversation: "attendance", requiresRole: "teacher" },
-	"memorization.record": { conversation: "memorization", requiresRole: "teacher" },
 	"users.register": { conversation: "register_user", requiresRole: "admin" },
 };
 

@@ -1,5 +1,4 @@
 import type { Conversation } from "@grammyjs/conversations";
-import { attendanceService, memorizationService } from "../../../../bot/services.js";
 import type { BaseContext, MyContext } from "../../../../types.js";
 import { t } from "../../../../utils/i18n.js";
 import type { Student } from "../../model.js";
@@ -9,6 +8,7 @@ import {
   getLang,
   studentService,
 } from "../helpers.js";
+import { attendanceService } from "../../../../bot/services.js";
 
 export async function viewStudentConversation(
   conversation: Conversation<BaseContext, MyContext>,
@@ -101,38 +101,6 @@ ${t("student_info_mother_phone", lang)}: ${student.motherPhone || t("no_value", 
     }
   } catch {
     // Ignore attendance fetch errors
-  }
-
-  // Memorization summary
-  try {
-    const memorizationResult = await memorizationService.getStudentMemorizations(student.id, {
-      limit: 100,
-    });
-    const totalMemorization = memorizationResult.total;
-    const memorizationRecords = memorizationResult.records;
-    if (memorizationRecords.length > 0 || totalMemorization > 0) {
-      message += `\n${t("memorization_records_title", lang)}\n\n`;
-      const totalLabel = t("memorization_total_label", lang);
-      message += `${totalLabel}: ${totalMemorization}\n\n`;
-      const recentMemorizations = memorizationRecords
-        .slice(0, 20)
-        .map((m) => {
-          const date = new Date(m.createdAt).toLocaleDateString(lang === "ar" ? "ar-SA" : "en-US");
-          return t("memorization_recent_format", lang, { page: `${m.page}`, date });
-        })
-        .join("\n");
-      if (recentMemorizations) {
-        message += recentMemorizations + "\n";
-      }
-      if (totalMemorization > 20) {
-        message += `\n${t("memorization_more_records", lang).replace(
-          "{count}",
-          `${totalMemorization - 20}`
-        )}\n`;
-      }
-    }
-  } catch {
-    // Ignore memorization fetch errors
   }
 
   await ctx.reply(message, { parse_mode: "Markdown" });

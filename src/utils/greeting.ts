@@ -7,7 +7,6 @@ const quickCommandButtons = [
   { key: "students", command: "/student" },
   { key: "teachers", command: "/teacher" },
   { key: "attendance", command: "/attendance" },
-  { key: "memorization_menu", command: "/memorize" },
 ];
 
 export async function sendGreeting(ctx: MyContext) {
@@ -18,7 +17,7 @@ export async function sendGreeting(ctx: MyContext) {
     return;
   }
   ctx.session.state = "START";
-  ctx.session.language = ctx.session.language || locale;
+  ctx.session.language = ctx.session.language as 'en' | 'ar' || locale;
 
   if (ctx.chat?.type === "private") {
     const keyboard = new InlineKeyboard();

@@ -1,12 +1,10 @@
 // User account management conversations
 import type { Conversation } from '@grammyjs/conversations';
 import { InlineKeyboard } from 'grammy';
+import { requireAdmin } from '../../features/auth/model.js';
 import type { BaseContext, MyContext } from '../../types.js';
 import { t } from '../../utils/i18n.js';
 import { UserService, type UserRole } from './model.js';
-import { requireAdmin } from '../../utils/auth.js';
-import { saveParentInquiry, type ParentInquiryInput } from '../parents/parentInquiryStore.js';
-import { logger } from '../../utils/logger.js';
 
 const userService = new UserService();
 
@@ -20,13 +18,11 @@ const ROLE_LABELS = {
 		admin: 'Admin',
 		teacher: 'Teacher',
 		student: 'Student',
-		parent: 'Parent',
 	},
 	ar: {
 		admin: 'مدير',
 		teacher: 'معلم',
 		student: 'طالب',
-		parent: 'ولي أمر',
 	},
 } as const;
 
@@ -73,7 +69,7 @@ export async function registerUserConversation(conversation: Conversation<BaseCo
 
 	const existing = await userService.getByTelegramId(ctx.from.id);
 	if (existing) {
-		await ctx.reply(lang === 'ar' 
+		await ctx.reply(lang === 'ar'
 			? 'أنت مسجل بالفعل! استخدم /profile لعرض معلوماتك.'
 			: 'You are already registered! Use /profile to view your information.');
 		return;
@@ -85,15 +81,14 @@ export async function registerUserConversation(conversation: Conversation<BaseCo
 
 	// Ask for role
 	const roleKeyboard = new InlineKeyboard()
-		.text('Parent', 'role_parent').row()
 		.text('Student', 'role_student').row()
 		.text('Teacher', 'role_teacher').row()
 		.text(t('cancel', lang), 'cancel');
 
 	await ctx.reply(
 		lang === 'ar'
-			? 'اختر دورك:\n\nولي الأمر - لأولياء الأمور\nطالب - للطلاب\nمعلم - للمعلمين'
-			: 'Select your role:\n\nParent - For parents/guardians\nStudent - For students\nTeacher - For teachers',
+			? 'اختر دورك:\n\nطالب - للطلاب\nمعلم - للمعلمين'
+			: 'Select your role:\n\nStudent - For students\nTeacher - For teachers',
 		{ reply_markup: roleKeyboard }
 	);
 
@@ -123,8 +118,6 @@ export async function registerUserConversation(conversation: Conversation<BaseCo
 	let role: UserRole = 'student';
 	if (roleData === 'role_teacher') {
 		role = 'teacher';
-	} else if (roleData === 'role_parent') {
-		role = 'parent';
 	}
 
 	const phoneValue = await askText(
@@ -132,49 +125,6 @@ export async function registerUserConversation(conversation: Conversation<BaseCo
 		'أدخل رقم هاتفك (اختياري، أو أرسل "-" للتخطي):',
 		true
 	);
-
-	let parentInquiryDetails: ParentInquiryInput | null = null;
-	if (role === 'parent') {
-		await ctx.reply(
-			lang === 'ar'
-				? 'رائع! سأطرح عليك بعض الأسئلة السريعة عن طفلك حتى أرسلها لفريق الإدارة.'
-				: "Great! I'll ask a few quick questions about your child so I can share them with the admin team."
-		);
-		const childName = await askText(
-			"What is your child's full name?",
-			'ما هو الاسم الكامل لطفلك؟'
-		);
-		const childAgeOrGrade = await askText(
-			'How old is your child or which grade are they in?',
-			'كم عمر طفلك أو ما صفه الدراسي؟'
-		);
-		const programPreference = await askText(
-			'Which program, days, or times are you interested in? (optional, send "-" to skip)',
-			'ما البرنامج أو الأيام أو الأوقات التي تناسبك؟ (اختياري، أرسل "-" للتخطي)',
-			true
-		);
-		const notes = await askText(
-			'Anything else we should know? (optional, send "-" to skip)',
-			'هل هناك أي تفاصيل إضافية نحتاج لمعرفتها؟ (اختياري، أرسل "-" للتخطي)',
-			true
-		);
-
-		const preferredContact = phoneValue || (ctx.from.username ? `@${ctx.from.username}` : null);
-		const sanitizedChildName = childName?.trim() || 'Unknown';
-		const sanitizedAgeOrGrade = childAgeOrGrade?.trim() || null;
-		const sanitizedProgram = programPreference?.trim() || null;
-		const sanitizedNotes = notes?.trim() || null;
-
-		parentInquiryDetails = {
-			telegramUserId: ctx.from.id,
-			parentName: `${firstName} ${lastName || ''}`.trim(),
-			contact: preferredContact,
-			childName: sanitizedChildName,
-			childAgeOrGrade: sanitizedAgeOrGrade,
-			programPreference: sanitizedProgram,
-			notes: sanitizedNotes,
-		};
-	}
 
 	// Register user
 	await ctx.reply(t('processing', lang));
@@ -193,18 +143,6 @@ export async function registerUserConversation(conversation: Conversation<BaseCo
 				? `تم التسجيل بنجاح!\n\nالدور: ${roleText}\nالاسم: ${user.firstName} ${user.lastName || ''}`
 				: `Registration successful!\n\nRole: ${roleText}\nName: ${user.firstName} ${user.lastName || ''}`
 		);
-
-		if (role === 'parent' && parentInquiryDetails) {
-			try {
-				await saveParentInquiry(parentInquiryDetails);
-			} catch (error) {
-				logger.error('Failed to save parent inquiry', {
-					error: error instanceof Error ? error.message : String(error),
-					userId: ctx.from.id,
-				});
-			}
-			await ctx.reply(t('parent_inquiry_thanks', lang), { parse_mode: 'Markdown' });
-		}
 	} catch (err) {
 		await ctx.reply(t('operation_failed', lang));
 	}
@@ -345,7 +283,6 @@ export async function assignRoleConversation(conversation: Conversation<BaseCont
 		.text('Admin', 'set_admin').row()
 		.text('Teacher', 'set_teacher').row()
 		.text('Student', 'set_student').row()
-		.text('Parent', 'set_parent').row()
 		.text(t('cancel', lang), 'cancel');
 
 	const currentRoleLabel = getRoleLabel(targetUser.role as UserRole, lang);
@@ -384,8 +321,6 @@ export async function assignRoleConversation(conversation: Conversation<BaseCont
 		newRole = 'admin';
 	} else if (roleData === 'set_teacher') {
 		newRole = 'teacher';
-	} else if (roleData === 'set_parent') {
-		newRole = 'parent';
 	}
 
 	// Update role

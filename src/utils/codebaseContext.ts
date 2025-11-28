@@ -22,9 +22,8 @@ export async function getCodebaseContext(): Promise<string> {
 		{ path: 'src/features/students/model.ts', description: 'Student data model' },
 		{ path: 'src/features/teachers/conversations.ts', description: 'Teacher feature conversations' },
 		{ path: 'src/features/attendance/conversations.ts', description: 'Attendance management flows' },
-		{ path: 'src/features/memorization/conversations.ts', description: 'Memorization tracking flows' },
 		{ path: 'src/features/users/conversations.ts', description: 'User management flows' },
-		{ path: 'src/utils/auth.ts', description: 'Authentication helpers' },
+		{ path: 'src/features/auth/model.ts', description: 'Authentication helpers' },
 		{ path: 'src/utils/helpDetector.ts', description: 'Help intent detection' },
 		{ path: 'src/utils/i18n.ts', description: 'Internationalization utilities' },
 		{ path: 'src/utils/lmStudio.ts', description: 'LLM integration helper' },
@@ -42,29 +41,29 @@ export async function getCodebaseContext(): Promise<string> {
 			const fileStartTime = Date.now();
 			const filePath = join(projectRoot, file.path);
 			const content = await readFile(filePath, 'utf-8');
-			
+
 			// Limit file size to avoid token limits (keep first 2000 chars)
-			const truncatedContent = content.length > 2000 
+			const truncatedContent = content.length > 2000
 				? content.substring(0, 2000) + '\n... (truncated)'
 				: content;
-			
+
 			contextParts.push(
 				`=== ${file.path} (${file.description}) ===\n${truncatedContent}\n`
 			);
-			
+
 			const fileDuration = Date.now() - fileStartTime;
 			successCount++;
-			logger.debug('Codebase context file read', { 
-				file: file.path, 
+			logger.debug('Codebase context file read', {
+				file: file.path,
 				originalLength: content.length,
 				truncated: content.length > 2000,
-				durationMs: fileDuration 
+				durationMs: fileDuration
 			});
 		} catch (error) {
 			failureCount++;
-			logger.warn('Failed to read file for codebase context', { 
-				file: file.path, 
-				error: error instanceof Error ? error.message : String(error) 
+			logger.warn('Failed to read file for codebase context', {
+				file: file.path,
+				error: error instanceof Error ? error.message : String(error)
 			});
 			// Continue with other files
 		}
@@ -72,11 +71,11 @@ export async function getCodebaseContext(): Promise<string> {
 
 	const totalDuration = Date.now() - startTime;
 	const totalContextLength = contextParts.join('\n').length;
-	logger.info('Codebase context built', { 
-		successCount, 
-		failureCount, 
+	logger.info('Codebase context built', {
+		successCount,
+		failureCount,
 		totalContextLength,
-		durationMs: totalDuration 
+		durationMs: totalDuration
 	});
 
 	return contextParts.join('\n');

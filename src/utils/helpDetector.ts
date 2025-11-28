@@ -46,8 +46,6 @@ export function isHelpQuestion(text: string): boolean {
 		'student',
 		'teacher',
 		'attendance',
-		'memorization',
-		'memorize',
 		'browse',
 		'summary',
 		'record',
